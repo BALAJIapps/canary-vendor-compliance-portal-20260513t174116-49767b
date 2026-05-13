@@ -3,16 +3,18 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* VendorGuard — enterprise compliance palette */
-  /* Primary: deep teal. Accent: burnt orange. Everything else is tints. */
+  /* VendorGuard — two-color system: teal (#072C2C) + orange (#FF5F03) only */
   --vc-primary:       #072C2C;
   --vc-primary-mid:   #0d4a4a;
-  --vc-primary-tint:  #e6f0ef;
+  --vc-primary-tint:  #ebf2f1;   /* single approved/low tint */
+  --vc-primary-text:  #072C2C;   /* text on tint */
   --vc-accent:        #FF5F03;
-  --vc-accent-tint:   #fff4ee;
+  --vc-accent-tint:   #fff4ee;   /* single pending tint */
+  --vc-accent-text:   #c44a00;   /* text on accent tint */
+  --vc-neutral-tint:  #f2f2f0;   /* rejected/high — neutral grey */
+  --vc-neutral-text:  #555555;
   --vc-surface:       #F5F3EE;
   --vc-surface-card:  #ffffff;
-  --vc-surface-row:   #fafaf8;
   --vc-border:        #dedad2;
   --vc-text-primary:  #0f1f1f;
   --vc-text-body:     #374151;

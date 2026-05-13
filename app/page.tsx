@@ -23,27 +23,32 @@ type Vendor = {
 };
 type VendorDoc = {
   id: string;
-  vendorId?: string;     vendor_id?: string;
+  vendorId?: string; vendor_id?: string;
   documentName?: string; document_name?: string;
   documentType?: string; document_type?: string;
-  createdAt?: string;    created_at?: string;
+  createdAt?: string; created_at?: string;
 };
 type Notification = {
   id: string; type: string; message: string; status: string;
   createdAt?: string; created_at?: string;
 };
 
-// Two-color semantic: primary tint = approved/sent, accent tint = pending, muted = rejected
+// Strictly two colors: teal family (approved/low/sent) and orange family (pending/medium/actions)
+// Rejected/high use neutral grey so they don't add a third hue
+const TEAL_BADGE:   React.CSSProperties = { background:"var(--vc-primary-tint)", color:"var(--vc-primary-text)", border:"1px solid #b8d4d2", fontFamily:"var(--font-body)" };
+const ORANGE_BADGE: React.CSSProperties = { background:"var(--vc-accent-tint)",  color:"var(--vc-accent-text)",  border:"1px solid #ffc9a8", fontFamily:"var(--font-body)" };
+const GREY_BADGE:   React.CSSProperties = { background:"var(--vc-neutral-tint)",  color:"var(--vc-neutral-text)", border:"1px solid #d4d4d0", fontFamily:"var(--font-body)" };
+
 const ST: Record<string, React.CSSProperties> = {
-  pending:  { background: "var(--vc-accent-tint)",  color: "var(--vc-accent)",  border: "1px solid #ffc9a8" },
-  approved: { background: "var(--vc-primary-tint)", color: "var(--vc-primary)", border: "1px solid #9ec4c0" },
-  rejected: { background: "#f5f5f5",                color: "#555",             border: "1px solid #ddd" },
-  sent:     { background: "var(--vc-primary-tint)", color: "var(--vc-primary)", border: "1px solid #9ec4c0" },
+  pending:  ORANGE_BADGE,
+  approved: TEAL_BADGE,
+  rejected: GREY_BADGE,
+  sent:     TEAL_BADGE,
 };
 const RISK: Record<string, React.CSSProperties> = {
-  low:    { background: "var(--vc-primary-tint)", color: "var(--vc-primary)", border: "1px solid #9ec4c0" },
-  medium: { background: "var(--vc-accent-tint)",  color: "var(--vc-accent)",  border: "1px solid #ffc9a8" },
-  high:   { background: "#f5f5f5",                color: "#555",             border: "1px solid #ddd" },
+  low:    TEAL_BADGE,
+  medium: ORANGE_BADGE,
+  high:   GREY_BADGE,
 };
 const SI: Record<string, React.ReactNode> = {
   pending:  <Clock className="h-3 w-3" />,
@@ -85,10 +90,8 @@ export default function Home() {
   const onVendor = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setSubmitMsg("");
     try {
-      const r = await fetch("/api/canary-vendors",{
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({vendor_email:vEmail,company_name:vName,category:vCat,risk_level:vRisk}),
-      });
+      const r = await fetch("/api/canary-vendors",{ method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({vendor_email:vEmail,company_name:vName,category:vCat,risk_level:vRisk}) });
       const d = await r.json();
       if (d.ok) { setSubmitMsg(`"${vName}" added to review queue.`); setVEmail("");setVName("");setVCat("");setVRisk("medium"); load(); }
       else setSubmitMsg(d.error??"Registration failed.");
@@ -98,10 +101,8 @@ export default function Home() {
   const onDoc = async (e: React.FormEvent) => {
     e.preventDefault(); setDocMsg("");
     try {
-      const r = await fetch("/api/canary-vendor-documents",{
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({vendor_id:dVid,document_name:dName,document_url:dUrl,document_type:dType}),
-      });
+      const r = await fetch("/api/canary-vendor-documents",{ method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({vendor_id:dVid,document_name:dName,document_url:dUrl,document_type:dType}) });
       const d = await r.json();
       if (d.ok) { setDocMsg(`"${dName}" saved.`); setDVid("");setDName("");setDUrl("");setDType(""); load(); }
       else setDocMsg(d.error??"Save failed.");
@@ -111,10 +112,8 @@ export default function Home() {
   const doAction = async (id:string, action:"approved"|"rejected") => {
     setActMsg("");
     try {
-      const r = await fetch(`/api/canary-vendors/${id}/approve`,{
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({review_note:`${action==="approved"?"Approved":"Rejected"} via dashboard`,action}),
-      });
+      const r = await fetch(`/api/canary-vendors/${id}/approve`,{ method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({review_note:`${action==="approved"?"Approved":"Rejected"} via dashboard`,action}) });
       const d = await r.json();
       if (d.ok) { setActMsg(action==="approved"?"Vendor approved — compliance confirmed.":"Vendor rejected."); load(); }
       else setActMsg(d.error??"Action failed.");
@@ -153,22 +152,20 @@ export default function Home() {
               <p className="label-xs" style={{color:"var(--vc-header-sub)",marginBottom:".2rem"}}>Portfolio Compliance Score</p>
               <div className="flex items-end gap-3">
                 <span style={{fontFamily:"var(--font-display)",fontSize:"2.75rem",fontWeight:700,lineHeight:1,color:"#fff"}}>{compScore}%</span>
-                <span className="text-sm" style={{color:"var(--vc-header-sub)",marginBottom:".3rem"}}>{approved} of {total} approved</span>
+                <span className="text-sm pb-1" style={{color:"var(--vc-header-sub)"}}>{approved} of {total} approved</span>
               </div>
             </div>
             <div className="flex items-center gap-6">
-              <div className="text-center">
-                <div style={{fontFamily:"var(--font-display)",fontSize:"1.6rem",fontWeight:600,color:"var(--vc-accent)"}}>{pending}</div>
-                <div className="label-xs" style={{color:"var(--vc-header-sub)"}}>Awaiting review</div>
-              </div>
-              <div className="text-center">
-                <div style={{fontFamily:"var(--font-display)",fontSize:"1.6rem",fontWeight:600,color:"#fff"}}>{docCount}</div>
-                <div className="label-xs" style={{color:"var(--vc-header-sub)"}}>Documents</div>
-              </div>
-              <div className="text-center">
-                <div style={{fontFamily:"var(--font-display)",fontSize:"1.6rem",fontWeight:600,color:"#fff"}}>{notifications.length}</div>
-                <div className="label-xs" style={{color:"var(--vc-header-sub)"}}>Events</div>
-              </div>
+              {[
+                {val:pending, label:"Awaiting review", col:"var(--vc-accent)"},
+                {val:docCount, label:"Documents", col:"#fff"},
+                {val:notifications.length, label:"Events", col:"#fff"},
+              ].map(m=>(
+                <div key={m.label} className="text-center">
+                  <div style={{fontFamily:"var(--font-display)",fontSize:"1.6rem",fontWeight:600,color:m.col,lineHeight:1}}>{m.val}</div>
+                  <div className="label-xs mt-1" style={{color:"var(--vc-header-sub)"}}>{m.label}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -211,7 +208,7 @@ export default function Home() {
                 <Button type="submit" disabled={loading} className="w-full h-9 text-sm font-semibold" style={{backgroundColor:"var(--vc-accent)",color:"#fff"}}>
                   <Plus className="h-3.5 w-3.5 mr-1.5"/>{loading?"Registering…":"Register Vendor"}
                 </Button>
-                {submitMsg && <p className="text-xs" style={{color:submitMsg.includes("added")?"var(--vc-primary)":"var(--vc-accent)"}}>{submitMsg}</p>}
+                {submitMsg && <p className="text-xs mt-1" style={{color:submitMsg.includes("added")?"var(--vc-primary)":"var(--vc-accent-text)"}}>{submitMsg}</p>}
               </form>
             </Card>
           </section>
@@ -239,7 +236,7 @@ export default function Home() {
                 <Button type="submit" className="w-full h-9 text-sm font-semibold" style={{backgroundColor:"var(--vc-primary)",color:"#fff"}}>
                   <Upload className="h-3.5 w-3.5 mr-1.5"/>Save Document
                 </Button>
-                {docMsg && <p className="text-xs" style={{color:docMsg.includes("saved")?"var(--vc-primary)":"var(--vc-accent)"}}>{docMsg}</p>}
+                {docMsg && <p className="text-xs mt-1" style={{color:docMsg.includes("saved")?"var(--vc-primary)":"var(--vc-accent-text)"}}>{docMsg}</p>}
               </form>
             </Card>
           </section>
@@ -252,15 +249,15 @@ export default function Home() {
             {actMsg && <span className="text-xs font-medium" style={{color:"var(--vc-primary)"}}>{actMsg}</span>}
           </div>
 
-          {/* Mobile: card-per-vendor view */}
+          {/* Mobile card view */}
           <div className="md:hidden space-y-3">
-            {vendors.length === 0 && (
+            {vendors.length===0 && (
               <Card style={{backgroundColor:"var(--vc-surface-card)",border:"1px solid var(--vc-border)",padding:"2rem",textAlign:"center"}}>
                 <AlertTriangle className="h-5 w-5 mx-auto mb-2" style={{color:"var(--vc-accent)"}}/>
                 <p className="text-sm" style={{color:"var(--vc-text-faint)"}}>No vendors yet — use the form above.</p>
               </Card>
             )}
-            {vendors.map(v => {
+            {vendors.map(v=>{
               const dCnt = documents.filter(d=>(d.vendorId??d.vendor_id)===v.id).length;
               const risk = v.riskLevel??v.risk_level??"medium";
               return (
@@ -292,7 +289,6 @@ export default function Home() {
                   {v.status!=="pending" && (
                     <p className="text-xs" style={{color:"var(--vc-text-faint)"}}>
                       Reviewed {(v.reviewedAt??v.reviewed_at)?new Date((v.reviewedAt??v.reviewed_at)!).toLocaleDateString():""}
-                      {(v.reviewNote??v.review_note)? ` — ${v.reviewNote??v.review_note}`:""}
                     </p>
                   )}
                 </Card>
@@ -300,7 +296,7 @@ export default function Home() {
             })}
           </div>
 
-          {/* Desktop: full table */}
+          {/* Desktop table */}
           <Card className="hidden md:block" style={{backgroundColor:"var(--vc-surface-card)",border:"1px solid var(--vc-border)",overflow:"hidden"}}>
             <table className="w-full" style={{fontSize:"0.8125rem"}}>
               <thead>
@@ -325,34 +321,28 @@ export default function Home() {
                       <td className="px-4 py-3 font-medium" style={{color:"var(--vc-text-primary)"}}>{v.companyName??v.company_name}</td>
                       <td className="px-4 py-3" style={{color:"var(--vc-text-muted)",fontSize:"0.75rem"}}>{v.vendorEmail??v.vendor_email}</td>
                       <td className="px-4 py-3" style={{color:"var(--vc-text-body)"}}>{v.category}</td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium" style={RISK[risk]??RISK.medium}>{risk}</span>
-                      </td>
+                      <td className="px-4 py-3"><span className="inline-flex px-2 py-0.5 rounded text-xs font-medium" style={RISK[risk]??RISK.medium}>{risk}</span></td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" style={ST[v.status]??ST.pending}>
                           {SI[v.status]??SI.pending}{v.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center" style={{color:"var(--vc-text-body)"}}>{dCnt}</td>
-                      <td className="px-4 py-3" style={{color:"var(--vc-text-muted)",maxWidth:"120px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                        {v.reviewNote??v.review_note??"—"}
-                      </td>
+                      <td className="px-4 py-3" style={{color:"var(--vc-text-muted)",maxWidth:"120px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v.reviewNote??v.review_note??"—"}</td>
                       <td className="px-4 py-3" style={{color:"var(--vc-text-faint)",fontSize:"0.75rem"}}>
                         {(v.reviewedAt??v.reviewed_at)
-                          ? new Date((v.reviewedAt??v.reviewed_at)!).toLocaleDateString()
-                          : new Date(v.createdAt??v.created_at??"").toLocaleDateString()}
+                          ?new Date((v.reviewedAt??v.reviewed_at)!).toLocaleDateString()
+                          :new Date(v.createdAt??v.created_at??"").toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3">
                         {v.status==="pending" ? (
                           <div className="flex gap-1.5">
                             <button onClick={()=>doAction(v.id,"approved")} aria-label="approve vendor"
-                              className="text-xs px-2.5 py-1 rounded font-semibold"
-                              style={{backgroundColor:"var(--vc-accent)",color:"#fff"}}>Approve</button>
+                              style={{fontSize:"0.75rem",padding:"0.25rem 0.625rem",borderRadius:"4px",fontWeight:600,backgroundColor:"var(--vc-accent)",color:"#fff"}}>Approve</button>
                             <button onClick={()=>doAction(v.id,"rejected")} aria-label="reject vendor"
-                              className="text-xs px-2.5 py-1 rounded font-semibold"
-                              style={{backgroundColor:"var(--vc-surface)",color:"var(--vc-text-body)",border:"1px solid var(--vc-border)"}}>Reject</button>
+                              style={{fontSize:"0.75rem",padding:"0.25rem 0.625rem",borderRadius:"4px",fontWeight:600,backgroundColor:"var(--vc-surface)",color:"var(--vc-text-body)",border:"1px solid var(--vc-border)"}}>Reject</button>
                           </div>
-                        ) : (
+                        ):(
                           <span style={{fontSize:"0.75rem",color:"var(--vc-text-faint)"}}>Reviewed</span>
                         )}
                       </td>
