@@ -3,24 +3,30 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* VendorGuard — two-color system: teal (#072C2C) + orange (#FF5F03) only */
-  --vc-primary:       #072C2C;
-  --vc-primary-mid:   #0d4a4a;
-  --vc-primary-tint:  #ebf2f1;   /* single approved/low tint */
-  --vc-primary-text:  #072C2C;   /* text on tint */
-  --vc-accent:        #FF5F03;
-  --vc-accent-tint:   #fff4ee;   /* single pending tint */
-  --vc-accent-text:   #c44a00;   /* text on accent tint */
-  --vc-neutral-tint:  #f2f2f0;   /* rejected/high — neutral grey */
-  --vc-neutral-text:  #555555;
-  --vc-surface:       #F5F3EE;
-  --vc-surface-card:  #ffffff;
-  --vc-border:        #dedad2;
-  --vc-text-primary:  #0f1f1f;
-  --vc-text-body:     #374151;
-  --vc-text-muted:    #6b7280;
-  --vc-text-faint:    #9ca3af;
-  --vc-header-sub:    #a0bfbf;
+  /* VendorGuard — two-color system: teal + orange */
+  --vc-primary:        #072C2C;
+  --vc-primary-mid:    #0d4a4a;
+  --vc-primary-tint:   #ebf2f1;
+  --vc-primary-text:   #072C2C;
+  --vc-on-primary:     #ffffff;
+  --vc-accent:         #FF5F03;
+  --vc-accent-tint:    #fff4ee;
+  --vc-accent-text:    #c44a00;
+  --vc-on-accent:      #ffffff;
+  --vc-accent-header-bg: rgba(255,95,3,0.14);
+  --vc-neutral-tint:   #f2f2f0;
+  --vc-neutral-text:   #555555;
+  --vc-teal-border:    #b8d4d2;
+  --vc-orange-border:  #ffc9a8;
+  --vc-neutral-border: #d4d4d0;
+  --vc-surface:        #F5F3EE;
+  --vc-surface-card:   #ffffff;
+  --vc-border:         #dedad2;
+  --vc-text-primary:   #0f1f1f;
+  --vc-text-body:      #374151;
+  --vc-text-muted:     #6b7280;
+  --vc-text-faint:     #9ca3af;
+  --vc-header-sub:     #a0bfbf;
 
   /* Typography */
   --font-display: 'Oswald', Georgia, serif;
@@ -105,14 +111,5 @@
     font-family: var(--font-body);
     font-size: 15px;
     line-height: 1.6;
-  }
-  .display { font-family: var(--font-display); letter-spacing: -0.01em; }
-  .label-xs {
-    font-family: var(--font-body);
-    font-size: 0.625rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--vc-text-muted);
   }
 }
