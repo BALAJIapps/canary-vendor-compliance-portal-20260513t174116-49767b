@@ -3,7 +3,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Enterprise design system tokens */
+  /* Enterprise design system — VendorGuard palette */
   --vc-primary: #072C2C;
   --vc-primary-dark: #0a3d3d;
   --vc-accent: #FF5F03;
@@ -21,6 +21,10 @@
   --vc-text-muted: #6b7280;
   --vc-text-faint: #9ca3af;
   --vc-header-text: #a0b8b8;
+
+  /* Typography */
+  --font-display: 'Oswald', Georgia, serif;
+  --font-body: 'Ubuntu', system-ui, sans-serif;
 
   /* shadcn/ui tokens */
   --background: oklch(1 0 0);
@@ -101,10 +105,19 @@
     background-color: var(--background);
     color: var(--foreground);
     font-feature-settings: "rlig" 1, "calt" 1;
-    font-family: Ubuntu, system-ui, sans-serif;
+    font-family: var(--font-body);
   }
-  h1, h2, h3 {
-    font-family: Oswald, Georgia, "Times New Roman", serif;
-    letter-spacing: -0.02em;
+  /* Display font for section headers and metric values */
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  /* Section label style */
+  .section-label {
+    font-family: var(--font-body);
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
   }
 }
