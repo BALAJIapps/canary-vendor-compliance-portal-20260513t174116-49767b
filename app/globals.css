@@ -3,28 +3,26 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Enterprise design system — VendorGuard palette */
-  --vc-primary: #072C2C;
-  --vc-primary-dark: #0a3d3d;
-  --vc-accent: #FF5F03;
-  --vc-accent-muted: rgba(255,95,3,0.15);
-  --vc-success: #16A34A;
-  --vc-warning: #D97706;
-  --vc-danger: #DC2626;
-  --vc-surface: #EDEADE;
-  --vc-surface-card: #ffffff;
-  --vc-surface-subtle: #f9f7f3;
-  --vc-border: #d4d0c8;
-  --vc-border-light: #edeade;
-  --vc-text-primary: #111827;
-  --vc-text-secondary: #374151;
-  --vc-text-muted: #6b7280;
-  --vc-text-faint: #9ca3af;
-  --vc-header-text: #a0b8b8;
+  /* VendorGuard — enterprise compliance palette */
+  /* Primary: deep teal. Accent: burnt orange. Everything else is tints. */
+  --vc-primary:       #072C2C;
+  --vc-primary-mid:   #0d4a4a;
+  --vc-primary-tint:  #e6f0ef;
+  --vc-accent:        #FF5F03;
+  --vc-accent-tint:   #fff4ee;
+  --vc-surface:       #F5F3EE;
+  --vc-surface-card:  #ffffff;
+  --vc-surface-row:   #fafaf8;
+  --vc-border:        #dedad2;
+  --vc-text-primary:  #0f1f1f;
+  --vc-text-body:     #374151;
+  --vc-text-muted:    #6b7280;
+  --vc-text-faint:    #9ca3af;
+  --vc-header-sub:    #a0bfbf;
 
   /* Typography */
   --font-display: 'Oswald', Georgia, serif;
-  --font-body: 'Ubuntu', system-ui, sans-serif;
+  --font-body:    'Ubuntu', system-ui, sans-serif;
 
   /* shadcn/ui tokens */
   --background: oklch(1 0 0);
@@ -46,7 +44,7 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 }
 
 .dark {
@@ -98,26 +96,21 @@
 }
 
 @layer base {
-  * {
-    border-color: var(--border);
-  }
+  * { border-color: var(--border); }
   body {
-    background-color: var(--background);
-    color: var(--foreground);
-    font-feature-settings: "rlig" 1, "calt" 1;
+    background-color: var(--vc-surface);
+    color: var(--vc-text-primary);
     font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
   }
-  /* Display font for section headers and metric values */
-  .font-display {
-    font-family: var(--font-display);
-    letter-spacing: -0.01em;
-  }
-  /* Section label style */
-  .section-label {
+  .display { font-family: var(--font-display); letter-spacing: -0.01em; }
+  .label-xs {
     font-family: var(--font-body);
-    font-size: 0.65rem;
-    font-weight: 600;
+    font-size: 0.625rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
+    color: var(--vc-text-muted);
   }
 }
