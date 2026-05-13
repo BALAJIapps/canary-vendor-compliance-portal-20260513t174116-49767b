@@ -46,6 +46,17 @@ type Notification = {
   createdAt?: string;
 };
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h2
+      className="section-label mb-4"
+      style={{ color: "var(--vc-primary)" }}
+    >
+      {children}
+    </h2>
+  );
+}
+
 export default function Home() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [documents, setDocuments] = useState<VendorDoc[]>([]);
@@ -152,13 +163,13 @@ export default function Home() {
   const docCount = documents.length;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--vc-surface)" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "var(--vc-surface)", fontFamily: "var(--font-body)" }}>
       {/* Header */}
       <header className="border-b" style={{ backgroundColor: "var(--vc-primary)", borderColor: "var(--vc-primary-dark)" }}>
         <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <ShieldCheck className="h-6 w-6" style={{ color: "var(--vc-accent)" }} />
-            <span className="text-lg font-semibold text-white tracking-tight">VendorGuard</span>
+            <span className="text-lg font-semibold text-white tracking-tight" style={{ fontFamily: "var(--font-display)" }}>VendorGuard</span>
             <span className="text-xs px-2 py-0.5 rounded" style={{ backgroundColor: "var(--vc-accent-muted)", color: "var(--vc-accent)" }}>Compliance Portal</span>
           </div>
           <div className="flex items-center gap-4 text-sm" style={{ color: "var(--vc-header-text)" }}>
@@ -172,7 +183,7 @@ export default function Home() {
 
         {/* Dashboard metrics */}
         <section aria-label="dashboard">
-          <h2 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--vc-primary)" }}>Dashboard Overview</h2>
+          <SectionLabel>Dashboard Overview</SectionLabel>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: "Total Vendors", value: total, icon: <Building2 className="h-5 w-5" />, color: "var(--vc-primary)" },
@@ -181,11 +192,11 @@ export default function Home() {
               { label: "Documents", value: docCount, icon: <FileText className="h-5 w-5" />, color: "var(--vc-accent)" },
             ].map((m) => (
               <Card key={m.label} className="p-5 border" style={{ backgroundColor: "var(--vc-surface-card)", borderColor: "var(--vc-border)" }}>
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium" style={{ color: "var(--vc-text-muted)" }}>{m.label}</span>
                   <span style={{ color: m.color }}>{m.icon}</span>
                 </div>
-                <div className="text-3xl font-bold" style={{ color: "var(--vc-text-primary)" }}>{m.value}</div>
+                <div className="font-display text-4xl font-bold leading-none" style={{ color: "var(--vc-text-primary)", fontFamily: "var(--font-display)" }}>{m.value}</div>
               </Card>
             ))}
           </div>
@@ -194,7 +205,7 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Vendor Onboarding Form */}
           <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--vc-primary)" }}>Register Vendor</h2>
+            <SectionLabel>Register Vendor</SectionLabel>
             <Card className="p-6 border" style={{ backgroundColor: "var(--vc-surface-card)", borderColor: "var(--vc-border)" }}>
               <form onSubmit={handleVendorSubmit} className="space-y-4">
                 <div>
@@ -232,7 +243,7 @@ export default function Home() {
 
           {/* Document Upload Panel */}
           <section>
-            <h2 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--vc-primary)" }}>Record Document</h2>
+            <SectionLabel>Record Document</SectionLabel>
             <Card className="p-6 border" style={{ backgroundColor: "var(--vc-surface-card)", borderColor: "var(--vc-border)" }}>
               <form onSubmit={handleDocSubmit} className="space-y-4">
                 <div>
@@ -266,8 +277,8 @@ export default function Home() {
         {/* Admin Approval Table */}
         <section aria-label="approval">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color: "var(--vc-primary)" }}>Admin Approval Queue</h2>
-            {approveMsg && <span className="text-sm" style={{ color: "var(--vc-success)" }}>{approveMsg}</span>}
+            <SectionLabel>Admin Approval Queue</SectionLabel>
+            {approveMsg && <span className="text-sm font-medium" style={{ color: "var(--vc-success)" }}>{approveMsg}</span>}
           </div>
           <Card className="border overflow-hidden" style={{ backgroundColor: "var(--vc-surface-card)", borderColor: "var(--vc-border)" }}>
             <div className="overflow-x-auto">
@@ -318,7 +329,7 @@ export default function Home() {
                         <td className="px-4 py-3 text-xs" style={{ color: "var(--vc-text-muted)", maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.reviewNote ?? v.review_note ?? "—"}</td>
                         <td className="px-4 py-3 text-xs" style={{ color: "var(--vc-text-faint)" }}>
                           {v.reviewedAt ?? v.reviewed_at
-                            ? new Date(v.reviewedAt ?? v.reviewed_at!).toLocaleDateString()
+                            ? new Date((v.reviewedAt ?? v.reviewed_at)!).toLocaleDateString()
                             : new Date(v.createdAt ?? v.created_at ?? "").toLocaleDateString()}
                         </td>
                         <td className="px-4 py-3">
@@ -341,7 +352,7 @@ export default function Home() {
 
         {/* Notification Activity Feed */}
         <section aria-label="notification">
-          <h2 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--vc-primary)" }}>Activity &amp; Notifications</h2>
+          <SectionLabel>Activity &amp; Notifications</SectionLabel>
           <Card className="border" style={{ backgroundColor: "var(--vc-surface-card)", borderColor: "var(--vc-border)" }}>
             {notifications.length === 0 && (
               <div className="px-6 py-8 text-center" style={{ color: "var(--vc-text-faint)" }}>No activity yet.</div>
@@ -354,7 +365,11 @@ export default function Home() {
                     <p className="text-sm" style={{ color: "var(--vc-text-primary)" }}>{n.message}</p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--vc-text-faint)" }}>{n.type} &middot; {new Date(n.createdAt ?? n.created_at ?? "").toLocaleString()}</p>
                   </div>
-                  <span className="text-xs px-2 py-0.5 rounded-full border" style={n.status === "sent" ? { backgroundColor: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0" } : { backgroundColor: "#fffbeb", color: "#92400e", border: "1px solid #fde68a" }}>{n.status}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={n.status === "sent"
+                    ? { backgroundColor: "#ecfdf5", color: "#065f46", border: "1px solid #a7f3d0" }
+                    : { backgroundColor: "#fffbeb", color: "#92400e", border: "1px solid #fde68a" }}>
+                    {n.status}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -363,7 +378,7 @@ export default function Home() {
 
         {/* Document List */}
         <section>
-          <h2 className="text-xs font-semibold uppercase tracking-widest mb-4" style={{ color: "var(--vc-primary)" }}>Uploaded Documents</h2>
+          <SectionLabel>Uploaded Documents</SectionLabel>
           <Card className="border overflow-hidden" style={{ backgroundColor: "var(--vc-surface-card)", borderColor: "var(--vc-border)" }}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -407,7 +422,7 @@ export default function Home() {
         <div className="mx-auto max-w-7xl flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-4 w-4" style={{ color: "var(--vc-accent)" }} />
-            <span className="text-sm font-semibold text-white">VendorGuard</span>
+            <span className="text-sm font-semibold text-white" style={{ fontFamily: "var(--font-display)" }}>VendorGuard</span>
           </div>
           <p className="text-xs" style={{ color: "var(--vc-header-text)" }}>Vendor compliance &amp; onboarding platform</p>
         </div>
