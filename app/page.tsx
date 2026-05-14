@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Building2, FileText, CheckCircle, Bell, BarChart3, ShieldCheck, Clock, XCircle } from 'lucide-react';
+import { Building2, FileText, CheckCircle, Bell, BarChart3, ShieldCheck, Clock, XCircle, ArrowRight } from 'lucide-react';
 
 type Vendor = {
   id: string;
@@ -25,15 +25,14 @@ type Notification = {
 };
 
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; color: string }> = {
-    pending:  { label: 'Pending',  color: '#92400e' },
-    approved: { label: 'Approved', color: '#166534' },
-    rejected: { label: 'Rejected', color: '#991b1b' },
+  const map: Record<string, { label: string; color: string; bg: string }> = {
+    pending:  { label: 'Pending',  color: '#92400e', bg: '#fef3c7' },
+    approved: { label: 'Approved', color: '#166534', bg: '#dcfce7' },
+    rejected: { label: 'Rejected', color: '#991b1b', bg: '#fee2e2' },
   };
-  const s = map[status] ?? { label: status, color: '#374151' };
-  const bg: Record<string, string> = { pending: '#fef3c7', approved: '#dcfce7', rejected: '#fee2e2' };
+  const s = map[status] ?? { label: status, color: '#374151', bg: '#f3f4f6' };
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600, color: s.color, backgroundColor: bg[status] ?? '#f3f4f6' }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, fontSize: 12, fontWeight: 600, color: s.color, backgroundColor: s.bg }}>
       {status === 'approved' && <CheckCircle size={11} />}
       {status === 'rejected' && <XCircle size={11} />}
       {status === 'pending'  && <Clock size={11} />}
@@ -65,22 +64,18 @@ export default function HomePage() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
-  // Vendor form
   const [vendorEmail, setVendorEmail] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [category, setCategory] = useState('');
   const [riskLevel, setRiskLevel] = useState('medium');
 
-  // Document form
   const [docVendorId, setDocVendorId] = useState('');
   const [docName, setDocName] = useState('');
   const [docUrl, setDocUrl] = useState('');
   const [docType, setDocType] = useState('');
 
-  // Approve form
   const [approveVendorId, setApproveVendorId] = useState('');
   const [reviewNote, setReviewNote] = useState('');
-  const [approveAction, setApproveAction] = useState<'approve' | 'reject'>('approve');
 
   const showMsg = (msg: string, type: 'success' | 'error' = 'success') => {
     setMessage(msg); setMessageType(type);
@@ -118,14 +113,13 @@ export default function HomePage() {
     } catch { showMsg('Network error', 'error'); } finally { setLoading(false); }
   };
 
-  const handleApprove = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!approveVendorId) { showMsg('Select a vendor', 'error'); return; }
+  const handleApproveAction = async (action: 'approve' | 'reject') => {
+    if (!approveVendorId) { showMsg('Select a vendor first', 'error'); return; }
     setLoading(true);
     try {
-      const res = await fetch(`/api/canary-vendors/${approveVendorId}/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ review_note: reviewNote, action: approveAction }) });
+      const res = await fetch(`/api/canary-vendors/${approveVendorId}/approve`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ review_note: reviewNote, action }) });
       const data = await res.json();
-      if (data.ok) { showMsg(`Vendor ${approveAction === 'approve' ? 'approved' : 'rejected'} successfully`); setApproveVendorId(''); setReviewNote(''); await fetchData(); }
+      if (data.ok) { showMsg(`Vendor ${action === 'approve' ? 'approved' : 'rejected'} successfully`); setApproveVendorId(''); setReviewNote(''); await fetchData(); }
       else showMsg(data.error?.message ?? 'Action failed', 'error');
     } catch { showMsg('Network error', 'error'); } finally { setLoading(false); }
   };
@@ -148,9 +142,11 @@ export default function HomePage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--vc-surface)', fontFamily: 'var(--font-body)' }}>
-      {/* Header */}
-      <header style={{ backgroundColor: 'var(--vc-primary)', borderBottom: '3px solid var(--vc-accent)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
+
+      {/* ── HERO / LANDING ── */}
+      <section style={{ backgroundColor: 'var(--vc-primary)', borderBottom: '3px solid var(--vc-accent)', padding: '0' }}>
+        {/* Top bar */}
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <ShieldCheck size={28} color="var(--vc-accent)" strokeWidth={1.8} />
             <div>
@@ -166,7 +162,49 @@ export default function HomePage() {
             </span>
           </div>
         </div>
-      </header>
+
+        {/* Hero content */}
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '48px 24px 40px', display: 'grid', gridTemplateColumns: '1fr auto', gap: 48, alignItems: 'center' }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,95,3,0.18)', border: '1px solid rgba(255,95,3,0.35)', borderRadius: 20, padding: '4px 14px', marginBottom: 20 }}>
+              <ShieldCheck size={13} color="var(--vc-accent)" />
+              <span style={{ fontSize: 12, color: 'var(--vc-accent)', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Enterprise Compliance</span>
+            </div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 700, color: 'var(--vc-on-primary)', letterSpacing: '0.02em', lineHeight: 1.15, marginBottom: 16, textTransform: 'uppercase' }}>
+              Vendor onboarding<br />
+              <span style={{ color: 'var(--vc-accent)' }}>done right.</span>
+            </h1>
+            <p style={{ fontSize: 16, color: 'var(--vc-header-sub)', lineHeight: 1.6, maxWidth: 520, marginBottom: 28 }}>
+              Screen vendors, collect compliance documents, and approve suppliers — all in one audit-ready portal. Every decision is logged, every document is tracked.
+            </p>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <button onClick={() => setActiveTab('onboard')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 24px', backgroundColor: 'var(--vc-accent)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: 'pointer', transition: 'opacity 0.15s' }}>
+                Register Vendor <ArrowRight size={16} />
+              </button>
+              <button onClick={() => setActiveTab('admin')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 24px', backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, fontSize: 15, fontWeight: 500, cursor: 'pointer' }}>
+                Admin Approval
+              </button>
+            </div>
+          </div>
+
+          {/* Stats column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 180 }}>
+            {[
+              { label: 'Total Vendors',  value: vendors.length,         color: 'var(--vc-accent)' },
+              { label: 'Pending Review', value: pendingVendors.length,  color: '#f59e0b' },
+              { label: 'Approved',       value: approvedVendors.length, color: '#34d399' },
+              { label: 'Rejected',       value: rejectedVendors.length, color: '#f87171' },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{ backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
+                <span style={{ fontSize: 13, color: 'var(--vc-header-sub)' }}>{label}</span>
+                <span style={{ fontSize: 22, fontWeight: 700, color, fontFamily: 'var(--font-display)' }}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {message && (
         <div style={{ backgroundColor: messageType === 'success' ? '#dcfce7' : '#fee2e2', borderBottom: `1px solid ${messageType === 'success' ? '#86efac' : '#fca5a5'}`, padding: '10px 24px', textAlign: 'center', fontSize: 14, color: messageType === 'success' ? '#166534' : '#991b1b', fontWeight: 500 }}>
@@ -188,33 +226,14 @@ export default function HomePage() {
           ))}
         </nav>
 
-        {/* ── DASHBOARD (always in DOM) ── */}
+        {/* ── DASHBOARD ── */}
         <div style={{ display: activeTab === 'dashboard' ? 'block' : 'none' }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Compliance Dashboard</h1>
-          <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 28 }}>Real-time overview of vendor onboarding and approval status</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
-            {[
-              { label: 'Total Vendors',   value: vendors.length,        icon: Building2,   color: 'var(--vc-primary)' },
-              { label: 'Pending Review',  value: pendingVendors.length, icon: Clock,        color: '#d97706' },
-              { label: 'Approved',        value: approvedVendors.length,icon: CheckCircle, color: '#16a34a' },
-              { label: 'Rejected',        value: rejectedVendors.length,icon: XCircle,     color: '#dc2626' },
-              { label: 'Notifications',   value: notifications.length,  icon: Bell,        color: 'var(--vc-accent)' },
-            ].map(({ label, value, icon: Icon, color }) => (
-              <div key={label} style={{ ...card, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon size={22} color={color} strokeWidth={1.8} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--vc-text-primary)', lineHeight: 1 }}>{value}</div>
-                  <div style={{ fontSize: 12, color: 'var(--vc-text-muted)', marginTop: 4 }}>{label}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Compliance Dashboard</h2>
+          <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 24 }}>Real-time overview of vendor onboarding and approval status</p>
           {vendors.length > 0 ? (
             <div style={{ ...card, overflow: 'hidden' }}>
               <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--vc-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--vc-primary)', letterSpacing: '0.03em', textTransform: 'uppercase' }}>Vendor Registry</h2>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600, color: 'var(--vc-primary)', letterSpacing: '0.03em', textTransform: 'uppercase' }}>Vendor Registry</h3>
                 <span style={{ fontSize: 12, color: 'var(--vc-text-muted)' }}>{vendors.length} total</span>
               </div>
               <div style={{ overflowX: 'auto' }}>
@@ -250,10 +269,10 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* ── ONBOARD (always in DOM) ── */}
+        {/* ── ONBOARD ── */}
         <div style={{ display: activeTab === 'onboard' ? 'block' : 'none', maxWidth: 560 }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Register Vendor</h1>
-          <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 28 }}>Submit a new vendor for compliance review and approval</p>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Register Vendor</h2>
+          <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 24 }}>Submit a new vendor for compliance review and approval</p>
           <form onSubmit={handleRegisterVendor} style={{ ...card, padding: 28 }}>
             <div style={{ marginBottom: 18 }}>
               <label htmlFor="vendor_email" style={lbl}>Vendor Email</label>
@@ -278,15 +297,15 @@ export default function HomePage() {
             </div>
             <button type="submit" disabled={loading}
               style={{ width: '100%', padding: '11px 24px', backgroundColor: loading ? 'var(--vc-primary-mid)' : 'var(--vc-primary)', color: 'var(--vc-on-primary)', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 0.15s' }}>
-              {loading ? 'Submitting…' : 'Create Vendor'}
+              {loading ? 'Submitting…' : 'Submit Vendor for Review'}
             </button>
           </form>
         </div>
 
-        {/* ── DOCUMENTS (always in DOM) ── */}
+        {/* ── DOCUMENTS ── */}
         <div style={{ display: activeTab === 'documents' ? 'block' : 'none', maxWidth: 600 }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Document Upload</h1>
-          <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 28 }}>Record compliance documents for a vendor</p>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Document Upload</h2>
+          <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 24 }}>Record compliance documents for a vendor</p>
           <form onSubmit={handleUploadDocument} style={{ ...card, padding: 28 }}>
             <div style={{ marginBottom: 18 }}>
               <label htmlFor="doc_vendor" style={lbl}>Vendor</label>
@@ -321,14 +340,15 @@ export default function HomePage() {
           </form>
         </div>
 
-        {/* ── ADMIN APPROVAL (always in DOM) ── */}
+        {/* ── ADMIN APPROVAL ── */}
         <div style={{ display: activeTab === 'admin' ? 'block' : 'none' }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Admin Approval Queue</h1>
-          <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 28 }}>Review and approve or reject vendor compliance submissions</p>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Admin Approval Queue</h2>
+          <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 24 }}>Review and approve or reject vendor compliance submissions</p>
+
           {vendors.length > 0 && (
             <div style={{ ...card, overflow: 'hidden', marginBottom: 28 }}>
               <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--vc-border)', backgroundColor: 'var(--vc-accent-header-bg)' }}>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600, color: 'var(--vc-accent-text)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Vendor Review Queue</h2>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600, color: 'var(--vc-accent-text)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Vendor Review Queue</h3>
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -357,48 +377,43 @@ export default function HomePage() {
               </div>
             </div>
           )}
+
           <div style={{ maxWidth: 500, ...card, padding: 28 }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 20, textTransform: 'uppercase' }}>Review Decision</h3>
-            <form onSubmit={handleApprove}>
-              <div style={{ marginBottom: 18 }}>
-                <label htmlFor="approve_vendor" style={lbl}>Select Vendor</label>
-                <select id="approve_vendor" required value={approveVendorId} onChange={e => setApproveVendorId(e.target.value)} style={inp}>
-                  <option value="">Select vendor…</option>
-                  {vendors.map(v => <option key={v.id} value={v.id}>{v.company_name} — {v.status}</option>)}
-                </select>
-              </div>
-              <div style={{ marginBottom: 18 }}>
-                <label style={lbl}>Decision</label>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  {(['approve', 'reject'] as const).map(act => (
-                    <label key={act} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: 'var(--vc-text-body)', padding: '8px 16px', border: `1px solid ${approveAction === act ? (act === 'approve' ? '#16a34a' : '#dc2626') : 'var(--vc-border)'}`, borderRadius: 6, backgroundColor: approveAction === act ? (act === 'approve' ? '#f0fdf4' : '#fef2f2') : '#fff', transition: 'all 0.15s' }}>
-                      <input type="radio" name="action" value={act} checked={approveAction === act} onChange={() => setApproveAction(act)} style={{ accentColor: act === 'approve' ? '#16a34a' : '#dc2626' }} />
-                      {act === 'approve' ? <><CheckCircle size={15} color="#16a34a" /> Approve</> : <><XCircle size={15} color="#dc2626" /> Reject</>}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div style={{ marginBottom: 24 }}>
-                <label htmlFor="review_note" style={lbl}>Reviewer Note</label>
-                <textarea id="review_note" value={reviewNote} onChange={e => setReviewNote(e.target.value)} placeholder="Add a compliance note or reason…" rows={3}
-                  style={{ ...inp, resize: 'vertical' }} />
-              </div>
-              <button type="submit" disabled={loading} aria-label="approve vendor"
-                style={{ width: '100%', padding: '11px 24px', backgroundColor: approveAction === 'approve' ? '#16a34a' : '#dc2626', color: '#fff', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'opacity 0.15s' }}>
-                {loading ? 'Processing…' : approveAction === 'approve' ? 'Approve Vendor' : 'Reject Vendor'}
+            <div style={{ marginBottom: 18 }}>
+              <label htmlFor="approve_vendor" style={lbl}>Select Vendor</label>
+              <select id="approve_vendor" value={approveVendorId} onChange={e => setApproveVendorId(e.target.value)} style={inp}>
+                <option value="">Select vendor…</option>
+                {vendors.map(v => <option key={v.id} value={v.id}>{v.company_name} — {v.status}</option>)}
+              </select>
+            </div>
+            <div style={{ marginBottom: 24 }}>
+              <label htmlFor="review_note" style={lbl}>Reviewer Note</label>
+              <textarea id="review_note" value={reviewNote} onChange={e => setReviewNote(e.target.value)} placeholder="Add a compliance note or reason…" rows={3}
+                style={{ ...inp, resize: 'vertical' }} />
+            </div>
+            {/* Approve and Reject as separate always-visible buttons */}
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button type="button" onClick={() => handleApproveAction('approve')} disabled={loading} aria-label="approve vendor"
+                style={{ flex: 1, padding: '11px 20px', backgroundColor: '#16a34a', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'opacity 0.15s' }}>
+                <CheckCircle size={16} /> Approve
               </button>
-            </form>
+              <button type="button" onClick={() => handleApproveAction('reject')} disabled={loading} aria-label="reject vendor"
+                style={{ flex: 1, padding: '11px 20px', backgroundColor: '#dc2626', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'opacity 0.15s' }}>
+                <XCircle size={16} /> Reject
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ── NOTIFICATIONS (always in DOM) ── */}
+        {/* ── NOTIFICATIONS ── */}
         <div style={{ display: activeTab === 'notifications' ? 'block' : 'none' }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Activity &amp; Notifications</h1>
-          <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 28 }}>Audit trail of all compliance events and system notifications</p>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Activity &amp; Notifications</h2>
+          <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 24 }}>Audit trail of all compliance events and system notifications</p>
           {notifications.length > 0 ? (
             <div style={{ ...card, overflow: 'hidden' }}>
               <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--vc-border)' }}>
-                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600, color: 'var(--vc-primary)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Notification History</h2>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600, color: 'var(--vc-primary)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Notification History</h3>
               </div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
