@@ -140,12 +140,41 @@ export default function HomePage() {
   const lbl: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--vc-text-primary)', marginBottom: 6 };
   const card: React.CSSProperties = { backgroundColor: 'var(--vc-surface-card)', border: '1px solid var(--vc-border)', borderRadius: 8 };
 
+  const VendorTable = ({ showNote = true }: { showNote?: boolean }) => (
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      <thead>
+        <tr style={{ backgroundColor: 'var(--vc-neutral-tint)' }}>
+          <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Company</th>
+          <th className="vc-table-secondary" style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Email</th>
+          <th className="vc-table-secondary" style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Category</th>
+          <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Risk</th>
+          <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</th>
+          {showNote && <th className="vc-table-secondary" style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Note</th>}
+          <th className="vc-table-secondary" style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {vendors.map((v, i) => (
+          <tr key={v.id} style={{ borderTop: '1px solid var(--vc-border)', backgroundColor: i % 2 === 1 ? 'var(--vc-neutral-tint)' : 'transparent' }}>
+            <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--vc-text-primary)' }}>{v.company_name}</td>
+            <td className="vc-table-secondary" style={{ padding: '12px 16px', color: 'var(--vc-text-body)' }}>{v.vendor_email}</td>
+            <td className="vc-table-secondary" style={{ padding: '12px 16px', color: 'var(--vc-text-body)' }}>{v.category}</td>
+            <td style={{ padding: '12px 16px' }}><RiskBadge level={v.risk_level} /></td>
+            <td style={{ padding: '12px 16px' }}><StatusBadge status={v.status} /></td>
+            {showNote && <td className="vc-table-secondary" style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12 }}>{v.review_note ?? '—'}</td>}
+            <td className="vc-table-secondary" style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{new Date(v.created_at).toLocaleDateString()}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--vc-surface)', fontFamily: 'var(--font-body)' }}>
 
       {/* ── HERO / LANDING ── */}
       <section style={{ backgroundColor: 'var(--vc-primary)', padding: 0 }}>
-        {/* Top nav bar — neutral, no accent */}
+        {/* Top nav bar */}
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <ShieldCheck size={26} color="rgba(255,255,255,0.7)" strokeWidth={1.6} />
@@ -154,33 +183,30 @@ export default function HomePage() {
               <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Compliance Portal</div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>{vendors.length} vendor{vendors.length !== 1 ? 's' : ''}</span>
-            <span style={{ width: 1, height: 18, backgroundColor: 'rgba(255,255,255,0.12)' }} />
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{vendors.length} vendor{vendors.length !== 1 ? 's' : ''}</span>
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', background: 'rgba(255,255,255,0.08)', padding: '3px 10px', borderRadius: 4, fontWeight: 500 }}>
-              {pendingVendors.length} pending review
+              {pendingVendors.length} pending
             </span>
           </div>
         </div>
 
-        {/* Hero content — accent used ONLY on the primary CTA button */}
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '52px 24px 44px', display: 'grid', gridTemplateColumns: '1fr 220px', gap: 48, alignItems: 'center' }}>
+        {/* Hero content */}
+        <div className="vc-hero-grid" style={{ maxWidth: 1200, margin: '0 auto', padding: '52px 24px 44px', display: 'grid', gridTemplateColumns: '1fr 220px', gap: 40, alignItems: 'center' }}>
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.14)', borderRadius: 20, padding: '4px 14px', marginBottom: 20 }}>
               <ShieldCheck size={12} color="rgba(255,255,255,0.6)" />
               <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Enterprise Compliance</span>
             </div>
-            <h1 style={{ fontFamily: 'Oswald, Georgia, serif', fontSize: 42, fontWeight: 700, color: '#fff', letterSpacing: '0.03em', lineHeight: 1.1, marginBottom: 16, textTransform: 'uppercase' }}>
-              Vendor onboarding<br />
-              done right.
+            <h1 style={{ fontFamily: 'Oswald, Georgia, serif', fontSize: 40, fontWeight: 700, color: '#fff', letterSpacing: '0.03em', lineHeight: 1.1, marginBottom: 16, textTransform: 'uppercase' }}>
+              Vendor onboarding<br />done right.
             </h1>
             <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65, maxWidth: 500, marginBottom: 32, fontFamily: 'Ubuntu, system-ui, sans-serif', fontWeight: 300 }}>
               Screen vendors, collect compliance documents, and approve suppliers — all in one audit-ready portal. Every decision is logged, every document is tracked.
             </p>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              {/* PRIMARY CTA — only use of accent orange */}
+            <div className="vc-btn-group" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <button onClick={() => setActiveTab('onboard')}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 26px', backgroundColor: '#FF5F03', color: '#fff', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'Ubuntu, system-ui, sans-serif', letterSpacing: '0.01em' }}>
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 26px', backgroundColor: '#FF5F03', color: '#fff', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'Ubuntu, system-ui, sans-serif' }}>
                 Register Vendor <ArrowRight size={16} />
               </button>
               <button onClick={() => setActiveTab('admin')}
@@ -190,7 +216,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Stats — neutral colors only, no accent */}
+          {/* Stats */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[
               { label: 'Total Vendors',  value: vendors.length,         color: '#fff' },
@@ -199,7 +225,7 @@ export default function HomePage() {
               { label: 'Rejected',       value: rejectedVendors.length, color: '#f87171' },
             ].map(({ label, value, color }) => (
               <div key={label} style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '10px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', fontFamily: 'Ubuntu, system-ui, sans-serif' }}>{label}</span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{label}</span>
                 <span style={{ fontSize: 20, fontWeight: 700, color, fontFamily: 'Oswald, Georgia, serif' }}>{value}</span>
               </div>
             ))}
@@ -215,13 +241,13 @@ export default function HomePage() {
 
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px' }}>
         {/* Tab nav */}
-        <nav style={{ display: 'flex', gap: 4, marginBottom: 28, borderBottom: '1px solid var(--vc-border)' }}>
+        <nav style={{ display: 'flex', gap: 2, marginBottom: 28, borderBottom: '1px solid var(--vc-border)', overflowX: 'auto' }}>
           {tabs.map(({ key, label, icon: Icon }) => (
             <button key={key} onClick={() => setActiveTab(key)}
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px', fontSize: 14, fontWeight: activeTab === key ? 600 : 400, color: activeTab === key ? 'var(--vc-primary)' : 'var(--vc-text-muted)', background: 'none', border: 'none', cursor: 'pointer', borderBottom: activeTab === key ? '2px solid var(--vc-primary)' : '2px solid transparent', marginBottom: -1, transition: 'color 0.15s' }}>
-              <Icon size={16} strokeWidth={1.8} />{label}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', fontSize: 13, fontWeight: activeTab === key ? 600 : 400, color: activeTab === key ? 'var(--vc-primary)' : 'var(--vc-text-muted)', background: 'none', border: 'none', cursor: 'pointer', borderBottom: activeTab === key ? '2px solid var(--vc-primary)' : '2px solid transparent', marginBottom: -1, transition: 'color 0.15s', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <Icon size={15} strokeWidth={1.8} />{label}
               {key === 'admin' && pendingVendors.length > 0 && (
-                <span style={{ background: '#dc2626', color: '#fff', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{pendingVendors.length}</span>
+                <span style={{ background: '#dc2626', color: '#fff', borderRadius: '50%', width: 17, height: 17, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700 }}>{pendingVendors.length}</span>
               )}
             </button>
           ))}
@@ -233,33 +259,12 @@ export default function HomePage() {
           <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 24 }}>Real-time overview of vendor onboarding and approval status</p>
           {vendors.length > 0 ? (
             <div style={{ ...card, overflow: 'hidden' }}>
-              <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--vc-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--vc-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <h3 style={{ fontFamily: 'Oswald, Georgia, serif', fontSize: 13, fontWeight: 600, color: 'var(--vc-primary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Vendor Registry</h3>
                 <span style={{ fontSize: 12, color: 'var(--vc-text-muted)' }}>{vendors.length} total</span>
               </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ backgroundColor: 'var(--vc-neutral-tint)' }}>
-                      {['Company', 'Email', 'Category', 'Risk', 'Status', 'Review Note', 'Registered'].map(h => (
-                        <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {vendors.map((v, i) => (
-                      <tr key={v.id} style={{ borderTop: '1px solid var(--vc-border)', backgroundColor: i % 2 === 1 ? 'var(--vc-neutral-tint)' : 'transparent' }}>
-                        <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--vc-text-primary)' }}>{v.company_name}</td>
-                        <td style={{ padding: '12px 16px', color: 'var(--vc-text-body)' }}>{v.vendor_email}</td>
-                        <td style={{ padding: '12px 16px', color: 'var(--vc-text-body)' }}>{v.category}</td>
-                        <td style={{ padding: '12px 16px' }}><RiskBadge level={v.risk_level} /></td>
-                        <td style={{ padding: '12px 16px' }}><StatusBadge status={v.status} /></td>
-                        <td style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12 }}>{v.review_note ?? '—'}</td>
-                        <td style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{new Date(v.created_at).toLocaleDateString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="vc-table-wrap" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <VendorTable showNote={true} />
               </div>
             </div>
           ) : (
@@ -297,14 +302,14 @@ export default function HomePage() {
               </select>
             </div>
             <button type="submit" disabled={loading}
-              style={{ width: '100%', padding: '11px 24px', backgroundColor: loading ? 'var(--vc-primary-mid)' : 'var(--vc-primary)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 0.15s' }}>
+              style={{ width: '100%', padding: '11px 24px', backgroundColor: loading ? 'var(--vc-primary-mid)' : 'var(--vc-primary)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}>
               {loading ? 'Submitting…' : 'Submit Vendor for Review'}
             </button>
           </form>
         </div>
 
         {/* ── DOCUMENTS ── */}
-        <div style={{ display: activeTab === 'documents' ? 'block' : 'none', maxWidth: 600 }}>
+        <div style={{ display: activeTab === 'documents' ? 'block' : 'none', maxWidth: 560 }}>
           <h2 style={{ fontFamily: 'Oswald, Georgia, serif', fontSize: 22, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.03em', marginBottom: 6, textTransform: 'uppercase' }}>Document Upload</h2>
           <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 24 }}>Record compliance documents for a vendor</p>
           <form onSubmit={handleUploadDocument} style={{ ...card, padding: 28 }}>
@@ -335,7 +340,7 @@ export default function HomePage() {
               </select>
             </div>
             <button type="submit" disabled={loading}
-              style={{ width: '100%', padding: '11px 24px', backgroundColor: loading ? 'var(--vc-primary-mid)' : 'var(--vc-primary)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 0.15s' }}>
+              style={{ width: '100%', padding: '11px 24px', backgroundColor: loading ? 'var(--vc-primary-mid)' : 'var(--vc-primary)', color: '#fff', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}>
               {loading ? 'Saving…' : 'Save Document Record'}
             </button>
           </form>
@@ -348,33 +353,11 @@ export default function HomePage() {
 
           {vendors.length > 0 && (
             <div style={{ ...card, overflow: 'hidden', marginBottom: 28 }}>
-              <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--vc-border)', backgroundColor: '#fafaf8' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--vc-border)', backgroundColor: '#fafaf8' }}>
                 <h3 style={{ fontFamily: 'Oswald, Georgia, serif', fontSize: 13, fontWeight: 600, color: 'var(--vc-primary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Vendor Review Queue</h3>
               </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ backgroundColor: 'var(--vc-neutral-tint)' }}>
-                      {['Company', 'Email', 'Category', 'Risk', 'Status', 'Doc Count', 'Updated', 'Reviewer Note'].map(h => (
-                        <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {vendors.map((v, i) => (
-                      <tr key={v.id} style={{ borderTop: '1px solid var(--vc-border)', backgroundColor: i % 2 === 1 ? 'var(--vc-neutral-tint)' : 'transparent' }}>
-                        <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--vc-text-primary)' }}>{v.company_name}</td>
-                        <td style={{ padding: '12px 16px', color: 'var(--vc-text-body)' }}>{v.vendor_email}</td>
-                        <td style={{ padding: '12px 16px', color: 'var(--vc-text-body)' }}>{v.category}</td>
-                        <td style={{ padding: '12px 16px' }}><RiskBadge level={v.risk_level} /></td>
-                        <td style={{ padding: '12px 16px' }}><StatusBadge status={v.status} /></td>
-                        <td style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12 }}>—</td>
-                        <td style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{v.reviewed_at ? new Date(v.reviewed_at).toLocaleDateString() : new Date(v.created_at).toLocaleDateString()}</td>
-                        <td style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12 }}>{v.review_note ?? '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="vc-table-wrap" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <VendorTable showNote={false} />
               </div>
             </div>
           )}
@@ -393,7 +376,7 @@ export default function HomePage() {
               <textarea id="review_note" value={reviewNote} onChange={e => setReviewNote(e.target.value)} placeholder="Add a compliance note or reason…" rows={3}
                 style={{ ...inp, resize: 'vertical' }} />
             </div>
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div className="vc-btn-group" style={{ display: 'flex', gap: 12 }}>
               <button type="button" onClick={() => handleApproveAction('approve')} disabled={loading} aria-label="approve vendor"
                 style={{ flex: 1, padding: '11px 20px', backgroundColor: '#16a34a', color: '#fff', border: 'none', borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <CheckCircle size={15} /> Approve
@@ -412,29 +395,30 @@ export default function HomePage() {
           <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 24 }}>Audit trail of all compliance events and system notifications</p>
           {notifications.length > 0 ? (
             <div style={{ ...card, overflow: 'hidden' }}>
-              <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--vc-border)' }}>
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--vc-border)' }}>
                 <h3 style={{ fontFamily: 'Oswald, Georgia, serif', fontSize: 13, fontWeight: 600, color: 'var(--vc-primary)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Notification History</h3>
               </div>
-              <div style={{ overflowX: 'auto' }}>
+              <div className="vc-table-wrap" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ backgroundColor: 'var(--vc-neutral-tint)' }}>
-                      {['Type', 'Message', 'Status', 'Time'].map(h => (
-                        <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
-                      ))}
+                      <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Type</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Message</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Status</th>
+                      <th className="vc-table-secondary" style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Time</th>
                     </tr>
                   </thead>
                   <tbody>
                     {notifications.map((n, i) => (
                       <tr key={n.id} style={{ borderTop: '1px solid var(--vc-border)', backgroundColor: i % 2 === 1 ? 'var(--vc-neutral-tint)' : 'transparent' }}>
                         <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--vc-primary)', fontWeight: 600, fontFamily: 'monospace', backgroundColor: 'var(--vc-primary-tint)', padding: '2px 8px', borderRadius: 4 }}>{n.type}</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--vc-primary)', fontWeight: 600, fontFamily: 'monospace', backgroundColor: 'var(--vc-primary-tint)', padding: '2px 8px', borderRadius: 4 }}>{n.type}</span>
                         </td>
-                        <td style={{ padding: '12px 16px', color: 'var(--vc-text-body)' }}>{n.message}</td>
+                        <td style={{ padding: '12px 16px', color: 'var(--vc-text-body)', wordBreak: 'break-word', maxWidth: 300 }}>{n.message}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <span style={{ fontSize: 12, color: n.status === 'sent' ? '#166534' : '#92400e', backgroundColor: n.status === 'sent' ? '#dcfce7' : '#fef3c7', padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>{n.status}</span>
                         </td>
-                        <td style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{new Date(n.created_at).toLocaleString()}</td>
+                        <td className="vc-table-secondary" style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{new Date(n.created_at).toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
