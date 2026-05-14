@@ -2,6 +2,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap');
+
 :root {
   /* VendorGuard — two-color system: teal + orange */
   --vc-primary:        #072C2C;
@@ -28,9 +30,9 @@
   --vc-text-faint:     #9ca3af;
   --vc-header-sub:     #a0bfbf;
 
-  /* Typography */
-  --font-display: 'Oswald', Georgia, serif;
-  --font-body:    'Ubuntu', system-ui, sans-serif;
+  /* Typography — Oswald for display, Ubuntu for body */
+  --font-display: 'Oswald', Georgia, 'Times New Roman', serif;
+  --font-body:    'Ubuntu', system-ui, -apple-system, sans-serif;
 
   /* shadcn/ui tokens */
   --background: oklch(1 0 0);
@@ -105,11 +107,29 @@
 
 @layer base {
   * { border-color: var(--border); }
+
   body {
     background-color: var(--vc-surface);
     color: var(--vc-text-primary);
     font-family: var(--font-body);
     font-size: 15px;
     line-height: 1.6;
+  }
+
+  /* Force Oswald display font on all headings — critical for typography rhythm */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Oswald', Georgia, 'Times New Roman', serif;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+  }
+
+  h1 { font-size: 2.25rem; letter-spacing: 0.03em; }
+  h2 { font-size: 1.5rem; letter-spacing: 0.025em; }
+  h3 { font-size: 1.125rem; letter-spacing: 0.02em; }
+
+  /* Body text uses Ubuntu for contrast with display headings */
+  p, span, label, td, th, input, select, textarea, button {
+    font-family: 'Ubuntu', system-ui, -apple-system, sans-serif;
   }
 }
