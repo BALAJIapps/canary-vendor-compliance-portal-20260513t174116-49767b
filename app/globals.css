@@ -30,7 +30,7 @@
   --vc-text-faint:     #9ca3af;
   --vc-header-sub:     #a0bfbf;
 
-  /* Typography — Oswald for display, Ubuntu for body */
+  /* Typography */
   --font-display: 'Oswald', Georgia, 'Times New Roman', serif;
   --font-body:    'Ubuntu', system-ui, -apple-system, sans-serif;
 
@@ -106,7 +106,15 @@
 }
 
 @layer base {
-  * { border-color: var(--border); }
+  * {
+    border-color: var(--border);
+    box-sizing: border-box;
+  }
+
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
 
   body {
     background-color: var(--vc-surface);
@@ -116,7 +124,7 @@
     line-height: 1.6;
   }
 
-  /* Force Oswald display font on all headings — critical for typography rhythm */
+  /* Oswald display font on all headings */
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Oswald', Georgia, 'Times New Roman', serif;
     font-weight: 700;
@@ -124,12 +132,47 @@
     line-height: 1.2;
   }
 
-  h1 { font-size: 2.25rem; letter-spacing: 0.03em; }
-  h2 { font-size: 1.5rem; letter-spacing: 0.025em; }
-  h3 { font-size: 1.125rem; letter-spacing: 0.02em; }
-
-  /* Body text uses Ubuntu for contrast with display headings */
+  /* Body text uses Ubuntu */
   p, span, label, td, th, input, select, textarea, button {
     font-family: 'Ubuntu', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* ── Responsive table: hide secondary columns on mobile ── */
+@media (max-width: 640px) {
+  /* Hero grid: stack on mobile */
+  .vc-hero-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Hide secondary table columns on small screens */
+  .vc-table-secondary {
+    display: none !important;
+  }
+
+  /* Ensure table wrapper doesn't overflow */
+  .vc-table-wrap {
+    overflow-x: hidden !important;
+  }
+
+  /* Make table cells wrap and shrink */
+  table {
+    font-size: 12px !important;
+  }
+
+  td, th {
+    padding: 8px 10px !important;
+    white-space: normal !important;
+    word-break: break-word;
+  }
+
+  /* Form inputs full width */
+  input, select, textarea {
+    font-size: 16px !important; /* prevent iOS zoom */
+  }
+
+  /* Buttons stacked on mobile */
+  .vc-btn-group {
+    flex-direction: column !important;
   }
 }
