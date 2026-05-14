@@ -1,342 +1,535 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import {
-  Building2, FileText, ShieldCheck, Bell,
-  CheckCircle, XCircle, Clock, Upload, Plus, AlertTriangle
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState, useEffect } from 'react';
+import { Building2, FileText, CheckCircle, Bell, BarChart3, Upload, ShieldCheck, Clock, XCircle, AlertTriangle } from 'lucide-react';
 
 type Vendor = {
   id: string;
-  vendorEmail?: string; vendor_email?: string;
-  companyName?: string; company_name?: string;
+  vendor_email: string;
+  company_name: string;
   category: string;
-  riskLevel?: string; risk_level?: string;
+  risk_level: string;
   status: string;
-  reviewNote?: string; review_note?: string;
-  reviewedAt?: string; reviewed_at?: string;
-  createdAt?: string;  created_at?: string;
+  review_note: string | null;
+  reviewed_at: string | null;
+  created_at: string;
 };
-type VendorDoc = {
-  id: string;
-  vendorId?: string; vendor_id?: string;
-  documentName?: string; document_name?: string;
-  documentType?: string; document_type?: string;
-  createdAt?: string; created_at?: string;
-};
+
 type Notification = {
-  id: string; type: string; message: string; status: string;
-  createdAt?: string; created_at?: string;
+  id: string;
+  vendor_id: string | null;
+  type: string;
+  message: string;
+  status: string;
+  created_at: string;
 };
 
-// Two-color semantic system using CSS variables only
-const TEAL:   React.CSSProperties = { background:"var(--vc-primary-tint)", color:"var(--vc-primary-text)", border:"1px solid var(--vc-teal-border)" };
-const ORANGE: React.CSSProperties = { background:"var(--vc-accent-tint)",  color:"var(--vc-accent-text)",  border:"1px solid var(--vc-orange-border)" };
-const GREY:   React.CSSProperties = { background:"var(--vc-neutral-tint)",  color:"var(--vc-neutral-text)", border:"1px solid var(--vc-neutral-border)" };
-
-const ST:   Record<string, React.CSSProperties> = { pending:ORANGE, approved:TEAL, rejected:GREY, sent:TEAL };
-const RISK: Record<string, React.CSSProperties> = { low:TEAL, medium:ORANGE, high:GREY };
-const SI:   Record<string, React.ReactNode> = {
-  pending:  <Clock className="h-3 w-3" />,
-  approved: <CheckCircle className="h-3 w-3" />,
-  rejected: <XCircle className="h-3 w-3" />,
+type Document = {
+  id: string;
+  vendor_id: string;
+  document_name: string;
+  document_url: string;
+  document_type: string;
+  created_at: string;
 };
 
-export default function Home() {
-  const [vendors,       setVendors]       = useState<Vendor[]>([]);
-  const [documents,     setDocuments]     = useState<VendorDoc[]>([]);
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; color: string }> = {
+    pending:  { label: 'Pending',  color: 'bg-amber-100 text-amber-800 border border-amber-200' },
+    approved: { label: 'Approved', color: 'bg-emerald-100 text-emerald-800 border border-emerald-200' },
+    rejected: { label: 'Rejected', color: 'bg-red-100 text-red-800 border border-red-200' },
+  };
+  const s = map[status] ?? { label: status, color: 'bg-gray-100 text-gray-700 border border-gray-200' };
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${s.color}`}>
+      {status === 'approved' && <CheckCircle size={11} />}
+      {status === 'rejected' && <XCircle size={11} />}
+      {status === 'pending'  && <Clock size={11} />}
+      {s.label}
+    </span>
+  );
+}
+
+function RiskBadge({ level }: { level: string }) {
+  const map: Record<string, string> = {
+    low:      'bg-blue-50 text-blue-700 border border-blue-200',
+    medium:   'bg-amber-50 text-amber-700 border border-amber-200',
+    high:     'bg-red-50 text-red-700 border border-red-200',
+    critical: 'bg-red-100 text-red-900 border border-red-300',
+  };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${map[level] ?? 'bg-gray-100 text-gray-700'}`}>
+      {level}
+    </span>
+  );
+}
+
+export default function HomePage() {
+  const [activeTab, setActiveTab] = useState<'onboard' | 'documents' | 'admin' | 'notifications' | 'dashboard'>('dashboard');
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading,   setLoading]   = useState(false);
-  const [submitMsg, setSubmitMsg] = useState("");
-  const [docMsg,    setDocMsg]    = useState("");
-  const [actMsg,    setActMsg]    = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
-  const [vEmail, setVEmail] = useState("");
-  const [vName,  setVName]  = useState("");
-  const [vCat,   setVCat]   = useState("");
-  const [vRisk,  setVRisk]  = useState("medium");
-  const [dVid,   setDVid]   = useState("");
-  const [dName,  setDName]  = useState("");
-  const [dUrl,   setDUrl]   = useState("");
-  const [dType,  setDType]  = useState("");
+  // Vendor form
+  const [vendorEmail, setVendorEmail] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [category, setCategory] = useState('');
+  const [riskLevel, setRiskLevel] = useState('medium');
 
-  const load = useCallback(async () => {
-    const [a,b,c] = await Promise.all([
-      fetch("/api/canary-vendors").catch(()=>null),
-      fetch("/api/canary-vendor-documents").catch(()=>null),
-      fetch("/api/canary-notifications").catch(()=>null),
-    ]);
-    if (a?.ok) { const j=await a.json(); setVendors(j.vendors??[]); }
-    if (b?.ok) { const j=await b.json(); setDocuments(j.documents??[]); }
-    if (c?.ok) { const j=await c.json(); setNotifications(j.notifications??[]); }
-  }, []);
+  // Document form
+  const [docVendorId, setDocVendorId] = useState('');
+  const [docName, setDocName] = useState('');
+  const [docUrl, setDocUrl] = useState('');
+  const [docType, setDocType] = useState('');
 
-  useEffect(()=>{ load(); },[load]);
+  // Approve form
+  const [approveVendorId, setApproveVendorId] = useState('');
+  const [reviewNote, setReviewNote] = useState('');
+  const [approveAction, setApproveAction] = useState<'approve' | 'reject'>('approve');
 
-  const onVendor = async (e: React.FormEvent) => {
-    e.preventDefault(); setLoading(true); setSubmitMsg("");
+  const showMsg = (msg: string, type: 'success' | 'error' = 'success') => {
+    setMessage(msg);
+    setMessageType(type);
+    setTimeout(() => setMessage(''), 4000);
+  };
+
+  const fetchData = async () => {
     try {
-      const r = await fetch("/api/canary-vendors",{ method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({vendor_email:vEmail,company_name:vName,category:vCat,risk_level:vRisk}) });
-      const d = await r.json();
-      if (d.ok) { setSubmitMsg(`"${vName}" added to review queue.`); setVEmail("");setVName("");setVCat("");setVRisk("medium"); load(); }
-      else setSubmitMsg(d.error??"Registration failed.");
-    } catch { setSubmitMsg("Network error."); } finally { setLoading(false); }
+      const [vRes, nRes] = await Promise.all([
+        fetch('/api/canary-vendors'),
+        fetch('/api/canary-notifications'),
+      ]);
+      const vData = await vRes.json();
+      const nData = await nRes.json();
+      if (vData.ok) setVendors(vData.vendors);
+      if (nData.ok) setNotifications(nData.notifications);
+    } catch {}
   };
 
-  const onDoc = async (e: React.FormEvent) => {
-    e.preventDefault(); setDocMsg("");
+  useEffect(() => { fetchData(); }, []);
+
+  const handleRegisterVendor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
     try {
-      const r = await fetch("/api/canary-vendor-documents",{ method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({vendor_id:dVid,document_name:dName,document_url:dUrl,document_type:dType}) });
-      const d = await r.json();
-      if (d.ok) { setDocMsg(`"${dName}" saved.`); setDVid("");setDName("");setDUrl("");setDType(""); load(); }
-      else setDocMsg(d.error??"Save failed.");
-    } catch { setDocMsg("Network error."); }
+      const res = await fetch('/api/canary-vendors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendor_email: vendorEmail, company_name: companyName, category, risk_level: riskLevel }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showMsg(`Vendor "${companyName}" registered successfully`);
+        setVendorEmail(''); setCompanyName(''); setCategory(''); setRiskLevel('medium');
+        await fetchData();
+        setActiveTab('dashboard');
+      } else {
+        showMsg(data.error?.message ?? 'Registration failed', 'error');
+      }
+    } catch {
+      showMsg('Network error', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const doAction = async (id:string, action:"approved"|"rejected") => {
-    setActMsg("");
+  const handleUploadDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
     try {
-      const r = await fetch(`/api/canary-vendors/${id}/approve`,{ method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({review_note:`${action==="approved"?"Approved":"Rejected"} via dashboard`,action}) });
-      const d = await r.json();
-      if (d.ok) { setActMsg(action==="approved"?"Vendor approved — compliance confirmed.":"Vendor rejected."); load(); }
-      else setActMsg(d.error??"Action failed.");
-    } catch { setActMsg("Network error."); }
+      const res = await fetch('/api/canary-vendor-documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendor_id: docVendorId, document_name: docName, document_url: docUrl, document_type: docType }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showMsg('Document recorded successfully');
+        setDocVendorId(''); setDocName(''); setDocUrl(''); setDocType('');
+        await fetchData();
+      } else {
+        showMsg(data.error?.message ?? 'Upload failed', 'error');
+      }
+    } catch {
+      showMsg('Network error', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const total    = vendors.length;
-  const pending  = vendors.filter(v=>v.status==="pending").length;
-  const approved = vendors.filter(v=>v.status==="approved").length;
-  const docCount = documents.length;
-  const compScore = total > 0 ? Math.round((approved/total)*100) : 0;
-
-  const VendorCard = ({ v }: { v: Vendor }) => {
-    const dCnt = documents.filter(d=>(d.vendorId??d.vendor_id)===v.id).length;
-    const risk = v.riskLevel??v.risk_level??"medium";
-    return (
-      <Card style={{backgroundColor:"var(--vc-surface-card)",border:"1px solid var(--vc-border)",padding:"1rem"}}>
-        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:"0.5rem",marginBottom:"0.5rem"}}>
-          <div>
-            <p style={{fontWeight:600,fontSize:"0.9rem",color:"var(--vc-text-primary)",margin:0}}>{v.companyName??v.company_name}</p>
-            <p style={{fontSize:"0.75rem",color:"var(--vc-text-muted)",margin:0}}>{v.vendorEmail??v.vendor_email}</p>
-          </div>
-          <span style={{...ST[v.status]??ORANGE,display:"inline-flex",alignItems:"center",gap:"3px",padding:"2px 8px",borderRadius:"4px",fontSize:"0.72rem",fontWeight:600,flexShrink:0}}>
-            {SI[v.status]??SI.pending}{v.status}
-          </span>
-        </div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:"0.5rem",marginBottom:"0.75rem"}}>
-          <span style={{fontSize:"0.72rem",padding:"2px 8px",borderRadius:"4px",backgroundColor:"var(--vc-surface)",color:"var(--vc-text-body)",border:"1px solid var(--vc-border)"}}>{v.category}</span>
-          <span style={{...RISK[risk]??ORANGE,display:"inline-block",padding:"2px 8px",borderRadius:"4px",fontSize:"0.72rem",fontWeight:500}}>{risk} risk</span>
-          <span style={{fontSize:"0.72rem",padding:"2px 8px",borderRadius:"4px",backgroundColor:"var(--vc-surface)",color:"var(--vc-text-body)",border:"1px solid var(--vc-border)"}}>{dCnt} doc{dCnt!==1?"s":""}</span>
-        </div>
-        {v.status==="pending" && (
-          <div style={{display:"flex",gap:"0.5rem"}}>
-            <button onClick={()=>doAction(v.id,"approved")} aria-label="approve vendor"
-              style={{flex:1,padding:"0.375rem 0",borderRadius:"4px",fontSize:"0.8rem",fontWeight:600,backgroundColor:"var(--vc-accent)",color:"var(--vc-on-accent)",border:"none",cursor:"pointer"}}>Approve</button>
-            <button onClick={()=>doAction(v.id,"rejected")} aria-label="reject vendor"
-              style={{flex:1,padding:"0.375rem 0",borderRadius:"4px",fontSize:"0.8rem",fontWeight:600,backgroundColor:"var(--vc-surface)",color:"var(--vc-text-body)",border:"1px solid var(--vc-border)",cursor:"pointer"}}>Reject</button>
-          </div>
-        )}
-        {v.status!=="pending" && (
-          <p style={{fontSize:"0.72rem",color:"var(--vc-text-faint)",margin:0}}>
-            Reviewed {(v.reviewedAt??v.reviewed_at)?new Date((v.reviewedAt??v.reviewed_at)!).toLocaleDateString():""}
-          </p>
-        )}
-      </Card>
-    );
+  const handleApprove = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!approveVendorId) { showMsg('Select a vendor', 'error'); return; }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/canary-vendors/${approveVendorId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ review_note: reviewNote, action: approveAction }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        showMsg(`Vendor ${approveAction === 'approve' ? 'approved' : 'rejected'} successfully`);
+        setApproveVendorId(''); setReviewNote('');
+        await fetchData();
+      } else {
+        showMsg(data.error?.message ?? 'Action failed', 'error');
+      }
+    } catch {
+      showMsg('Network error', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const pendingVendors = vendors.filter(v => v.status === 'pending');
+  const approvedVendors = vendors.filter(v => v.status === 'approved');
+  const rejectedVendors = vendors.filter(v => v.status === 'rejected');
+
+  const tabs = [
+    { key: 'dashboard',      label: 'Dashboard',      icon: BarChart3 },
+    { key: 'onboard',        label: 'Register Vendor', icon: Building2 },
+    { key: 'documents',      label: 'Documents',       icon: FileText },
+    { key: 'admin',          label: 'Admin Approval',  icon: ShieldCheck },
+    { key: 'notifications',  label: 'Activity',        icon: Bell },
+  ] as const;
 
   return (
-    <div style={{minHeight:"100vh",backgroundColor:"var(--vc-surface)",fontFamily:"var(--font-body)"}}>
-
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--vc-surface)', fontFamily: 'var(--font-body)' }}>
       {/* Header */}
-      <header style={{backgroundColor:"var(--vc-primary)",borderBottom:"1px solid var(--vc-primary-mid)",position:"sticky",top:0,zIndex:10}}>
-        <div style={{maxWidth:"80rem",margin:"0 auto",padding:"0.75rem 1.5rem",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div style={{display:"flex",alignItems:"center",gap:"0.75rem"}}>
-            <ShieldCheck className="h-5 w-5" style={{color:"var(--vc-accent)",flexShrink:0}}/>
-            <span style={{fontFamily:"var(--font-display)",fontSize:"1.1rem",fontWeight:600,color:"var(--vc-on-primary)",letterSpacing:"-0.01em"}}>VendorGuard</span>
-            <span style={{fontSize:"0.7rem",padding:"2px 8px",borderRadius:"4px",backgroundColor:"var(--vc-accent-header-bg)",color:"var(--vc-accent)"}}>Compliance Portal</span>
+      <header style={{ backgroundColor: 'var(--vc-primary)', borderBottom: '3px solid var(--vc-accent)' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <ShieldCheck size={28} color="var(--vc-accent)" strokeWidth={1.8} />
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--vc-on-primary)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>VendorGuard</div>
+              <div style={{ fontSize: 11, color: 'var(--vc-header-sub)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Compliance Portal</div>
+            </div>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:"1rem",fontSize:"0.75rem",color:"var(--vc-header-sub)"}}>
-            <span style={{display:"flex",alignItems:"center",gap:"4px"}}><Bell className="h-3.5 w-3.5"/>{notifications.length} alerts</span>
-            <span style={{display:"flex",alignItems:"center",gap:"4px"}}><Building2 className="h-3.5 w-3.5"/>{total} vendors</span>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <span style={{ fontSize: 13, color: 'var(--vc-header-sub)' }}>{vendors.length} vendor{vendors.length !== 1 ? 's' : ''}</span>
+            <span style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+            <span style={{ fontSize: 13, color: 'var(--vc-on-primary)', background: pendingVendors.length > 0 ? 'var(--vc-accent)' : 'rgba(255,255,255,0.1)', padding: '3px 10px', borderRadius: 4, fontWeight: 600 }}>
+              {pendingVendors.length} pending
+            </span>
           </div>
         </div>
       </header>
 
-      {/* Compliance Score Banner */}
-      <div style={{backgroundColor:"var(--vc-primary-mid)",padding:"1rem 0"}}>
-        <div style={{maxWidth:"80rem",margin:"0 auto",padding:"0 1.5rem"}}>
-          <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",justifyContent:"space-between",gap:"1rem"}}>
-            <div>
-              <p style={{fontSize:"0.625rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"var(--vc-header-sub)",marginBottom:"0.25rem",margin:0}}>Portfolio Compliance Score</p>
-              <div style={{display:"flex",alignItems:"flex-end",gap:"0.75rem"}}>
-                <span style={{fontFamily:"var(--font-display)",fontSize:"2.75rem",fontWeight:700,lineHeight:1,color:"var(--vc-on-primary)"}}>{compScore}%</span>
-                <span style={{fontSize:"0.875rem",color:"var(--vc-header-sub)",paddingBottom:"0.3rem"}}>{approved} of {total} approved</span>
-              </div>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:"1.5rem"}}>
+      {/* Flash message */}
+      {message && (
+        <div style={{ backgroundColor: messageType === 'success' ? '#dcfce7' : '#fee2e2', borderBottom: `1px solid ${messageType === 'success' ? '#86efac' : '#fca5a5'}`, padding: '10px 24px', textAlign: 'center', fontSize: 14, color: messageType === 'success' ? '#166534' : '#991b1b', fontWeight: 500 }}>
+          {message}
+        </div>
+      )}
+
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px' }}>
+        {/* Tab nav */}
+        <nav style={{ display: 'flex', gap: 4, marginBottom: 28, borderBottom: '1px solid var(--vc-border)', paddingBottom: 0 }}>
+          {tabs.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7, padding: '10px 18px',
+                fontSize: 14, fontWeight: activeTab === key ? 600 : 400,
+                color: activeTab === key ? 'var(--vc-primary)' : 'var(--vc-text-muted)',
+                background: 'none', border: 'none', cursor: 'pointer',
+                borderBottom: activeTab === key ? '2px solid var(--vc-accent)' : '2px solid transparent',
+                marginBottom: -1, transition: 'color 0.15s',
+              }}
+            >
+              <Icon size={16} strokeWidth={1.8} />
+              {label}
+              {key === 'admin' && pendingVendors.length > 0 && (
+                <span style={{ background: 'var(--vc-accent)', color: '#fff', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>{pendingVendors.length}</span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* ── DASHBOARD ── */}
+        {activeTab === 'dashboard' && (
+          <div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Compliance Dashboard</h1>
+            <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 28 }}>Real-time overview of vendor onboarding and approval status</p>
+
+            {/* Metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
               {[
-                {val:pending,  label:"Awaiting review", col:"var(--vc-accent)"},
-                {val:docCount, label:"Documents",       col:"var(--vc-on-primary)"},
-                {val:notifications.length, label:"Events", col:"var(--vc-on-primary)"},
-              ].map(m=>(
-                <div key={m.label} style={{textAlign:"center"}}>
-                  <div style={{fontFamily:"var(--font-display)",fontSize:"1.6rem",fontWeight:600,color:m.col,lineHeight:1}}>{m.val}</div>
-                  <div style={{fontSize:"0.625rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",color:"var(--vc-header-sub)",marginTop:"0.25rem"}}>{m.label}</div>
+                { label: 'Total Vendors', value: vendors.length, icon: Building2, color: 'var(--vc-primary)' },
+                { label: 'Pending Review', value: pendingVendors.length, icon: Clock, color: '#d97706' },
+                { label: 'Approved', value: approvedVendors.length, icon: CheckCircle, color: '#16a34a' },
+                { label: 'Rejected', value: rejectedVendors.length, icon: XCircle, color: '#dc2626' },
+                { label: 'Notifications', value: notifications.length, icon: Bell, color: 'var(--vc-accent)' },
+              ].map(({ label, value, icon: Icon, color }) => (
+                <div key={label} style={{ backgroundColor: 'var(--vc-surface-card)', border: '1px solid var(--vc-border)', borderRadius: 8, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 8, backgroundColor: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon size={22} color={color} strokeWidth={1.8} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--vc-text-primary)', lineHeight: 1 }}>{value}</div>
+                    <div style={{ fontSize: 12, color: 'var(--vc-text-muted)', marginTop: 4 }}>{label}</div>
+                  </div>
                 </div>
               ))}
             </div>
+
+            {/* Recent vendors table */}
+            {vendors.length > 0 ? (
+              <div style={{ backgroundColor: 'var(--vc-surface-card)', border: '1px solid var(--vc-border)', borderRadius: 8, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--vc-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--vc-primary)', letterSpacing: '0.03em', textTransform: 'uppercase' }}>Vendor Registry</h2>
+                  <span style={{ fontSize: 12, color: 'var(--vc-text-muted)' }}>{vendors.length} total</span>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ backgroundColor: 'var(--vc-neutral-tint)' }}>
+                        {['Company', 'Email', 'Category', 'Risk', 'Status', 'Review Note', 'Registered'].map(h => (
+                          <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vendors.map((v, i) => (
+                        <tr key={v.id} style={{ borderTop: '1px solid var(--vc-border)', backgroundColor: i % 2 === 1 ? 'var(--vc-neutral-tint)' : 'transparent' }}>
+                          <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--vc-text-primary)' }}>{v.company_name}</td>
+                          <td style={{ padding: '12px 16px', color: 'var(--vc-text-body)' }}>{v.vendor_email}</td>
+                          <td style={{ padding: '12px 16px', color: 'var(--vc-text-body)' }}>{v.category}</td>
+                          <td style={{ padding: '12px 16px' }}><RiskBadge level={v.risk_level} /></td>
+                          <td style={{ padding: '12px 16px' }}><StatusBadge status={v.status} /></td>
+                          <td style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12 }}>{v.review_note ?? '—'}</td>
+                          <td style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{new Date(v.created_at).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div style={{ backgroundColor: 'var(--vc-surface-card)', border: '1px dashed var(--vc-border)', borderRadius: 8, padding: '48px 24px', textAlign: 'center' }}>
+                <Building2 size={40} color="var(--vc-text-faint)" strokeWidth={1.4} style={{ margin: '0 auto 12px' }} />
+                <p style={{ color: 'var(--vc-text-muted)', fontSize: 14 }}>No vendors registered yet. Use the <strong>Register Vendor</strong> tab to onboard your first vendor.</p>
+              </div>
+            )}
           </div>
-        </div>
+        )}
+
+        {/* ── ONBOARD ── */}
+        {activeTab === 'onboard' && (
+          <div style={{ maxWidth: 560 }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Register Vendor</h1>
+            <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 28 }}>Submit a new vendor for compliance review and approval</p>
+            <form onSubmit={handleRegisterVendor} style={{ backgroundColor: 'var(--vc-surface-card)', border: '1px solid var(--vc-border)', borderRadius: 8, padding: 28 }}>
+              <div style={{ marginBottom: 18 }}>
+                <label htmlFor="vendor_email" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--vc-text-primary)', marginBottom: 6 }}>Vendor Email</label>
+                <input id="vendor_email" type="email" required value={vendorEmail} onChange={e => setVendorEmail(e.target.value)}
+                  placeholder="vendor@company.com"
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--vc-border)', borderRadius: 6, fontSize: 14, color: 'var(--vc-text-primary)', backgroundColor: '#fff', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
+              <div style={{ marginBottom: 18 }}>
+                <label htmlFor="company_name" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--vc-text-primary)', marginBottom: 6 }}>Company Name</label>
+                <input id="company_name" type="text" required value={companyName} onChange={e => setCompanyName(e.target.value)}
+                  placeholder="Acme Supplies Ltd."
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--vc-border)', borderRadius: 6, fontSize: 14, color: 'var(--vc-text-primary)', backgroundColor: '#fff', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
+              <div style={{ marginBottom: 18 }}>
+                <label htmlFor="category" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--vc-text-primary)', marginBottom: 6 }}>Category</label>
+                <input id="category" type="text" required value={category} onChange={e => setCategory(e.target.value)}
+                  placeholder="e.g. Logistics, IT Services, Facilities"
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--vc-border)', borderRadius: 6, fontSize: 14, color: 'var(--vc-text-primary)', backgroundColor: '#fff', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
+              <div style={{ marginBottom: 24 }}>
+                <label htmlFor="risk_level" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--vc-text-primary)', marginBottom: 6 }}>Risk Level</label>
+                <select id="risk_level" value={riskLevel} onChange={e => setRiskLevel(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--vc-border)', borderRadius: 6, fontSize: 14, color: 'var(--vc-text-primary)', backgroundColor: '#fff', boxSizing: 'border-box', outline: 'none' }}>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+              <button type="submit" disabled={loading}
+                style={{ width: '100%', padding: '11px 24px', backgroundColor: loading ? 'var(--vc-primary-mid)' : 'var(--vc-primary)', color: 'var(--vc-on-primary)', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 0.15s', letterSpacing: '0.01em' }}>
+                {loading ? 'Submitting…' : 'Submit Vendor for Review'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ── DOCUMENTS ── */}
+        {activeTab === 'documents' && (
+          <div style={{ maxWidth: 600 }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Document Upload</h1>
+            <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 28 }}>Record compliance documents for a vendor</p>
+            <form onSubmit={handleUploadDocument} style={{ backgroundColor: 'var(--vc-surface-card)', border: '1px solid var(--vc-border)', borderRadius: 8, padding: 28 }}>
+              <div style={{ marginBottom: 18 }}>
+                <label htmlFor="doc_vendor" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--vc-text-primary)', marginBottom: 6 }}>Vendor</label>
+                <select id="doc_vendor" required value={docVendorId} onChange={e => setDocVendorId(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--vc-border)', borderRadius: 6, fontSize: 14, color: 'var(--vc-text-primary)', backgroundColor: '#fff', boxSizing: 'border-box', outline: 'none' }}>
+                  <option value="">Select vendor…</option>
+                  {vendors.map(v => <option key={v.id} value={v.id}>{v.company_name} ({v.vendor_email})</option>)}
+                </select>
+              </div>
+              <div style={{ marginBottom: 18 }}>
+                <label htmlFor="doc_name" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--vc-text-primary)', marginBottom: 6 }}>Document Name</label>
+                <input id="doc_name" type="text" required value={docName} onChange={e => setDocName(e.target.value)}
+                  placeholder="e.g. insurance.pdf"
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--vc-border)', borderRadius: 6, fontSize: 14, color: 'var(--vc-text-primary)', backgroundColor: '#fff', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
+              <div style={{ marginBottom: 18 }}>
+                <label htmlFor="doc_url" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--vc-text-primary)', marginBottom: 6 }}>Document URL</label>
+                <input id="doc_url" type="url" required value={docUrl} onChange={e => setDocUrl(e.target.value)}
+                  placeholder="https://example.com/document.pdf"
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--vc-border)', borderRadius: 6, fontSize: 14, color: 'var(--vc-text-primary)', backgroundColor: '#fff', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
+              <div style={{ marginBottom: 24 }}>
+                <label htmlFor="doc_type" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--vc-text-primary)', marginBottom: 6 }}>Document Type</label>
+                <select id="doc_type" required value={docType} onChange={e => setDocType(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--vc-border)', borderRadius: 6, fontSize: 14, color: 'var(--vc-text-primary)', backgroundColor: '#fff', boxSizing: 'border-box', outline: 'none' }}>
+                  <option value="">Select type…</option>
+                  <option value="insurance">Insurance Certificate</option>
+                  <option value="tax">Tax Clearance</option>
+                  <option value="license">Business License</option>
+                  <option value="contract">Contract / Agreement</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <button type="submit" disabled={loading}
+                style={{ width: '100%', padding: '11px 24px', backgroundColor: loading ? 'var(--vc-primary-mid)' : 'var(--vc-primary)', color: 'var(--vc-on-primary)', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background 0.15s' }}>
+                {loading ? 'Saving…' : 'Save Document Record'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ── ADMIN APPROVAL ── */}
+        {activeTab === 'admin' && (
+          <div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Admin Approval Queue</h1>
+            <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 28 }}>Review and approve or reject vendor compliance submissions</p>
+
+            {/* Pending vendors table */}
+            {vendors.length > 0 ? (
+              <div style={{ backgroundColor: 'var(--vc-surface-card)', border: '1px solid var(--vc-border)', borderRadius: 8, overflow: 'hidden', marginBottom: 28 }}>
+                <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--vc-border)', backgroundColor: 'var(--vc-accent-header-bg)' }}>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600, color: 'var(--vc-accent-text)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Vendor Review Queue</h2>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ backgroundColor: 'var(--vc-neutral-tint)' }}>
+                        {['Company', 'Email', 'Category', 'Risk', 'Status', 'Docs', 'Updated', 'Note'].map(h => (
+                          <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vendors.map((v, i) => (
+                        <tr key={v.id} style={{ borderTop: '1px solid var(--vc-border)', backgroundColor: i % 2 === 1 ? 'var(--vc-neutral-tint)' : 'transparent' }}>
+                          <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--vc-text-primary)' }}>{v.company_name}</td>
+                          <td style={{ padding: '12px 16px', color: 'var(--vc-text-body)' }}>{v.vendor_email}</td>
+                          <td style={{ padding: '12px 16px', color: 'var(--vc-text-body)' }}>{v.category}</td>
+                          <td style={{ padding: '12px 16px' }}><RiskBadge level={v.risk_level} /></td>
+                          <td style={{ padding: '12px 16px' }}><StatusBadge status={v.status} /></td>
+                          <td style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12 }}>—</td>
+                          <td style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{v.reviewed_at ? new Date(v.reviewed_at).toLocaleDateString() : new Date(v.created_at).toLocaleDateString()}</td>
+                          <td style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12 }}>{v.review_note ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Approve / reject form */}
+            <div style={{ maxWidth: 500, backgroundColor: 'var(--vc-surface-card)', border: '1px solid var(--vc-border)', borderRadius: 8, padding: 28 }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 20, textTransform: 'uppercase' }}>Review Decision</h3>
+              <form onSubmit={handleApprove}>
+                <div style={{ marginBottom: 18 }}>
+                  <label htmlFor="approve_vendor" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--vc-text-primary)', marginBottom: 6 }}>Select Vendor</label>
+                  <select id="approve_vendor" required value={approveVendorId} onChange={e => setApproveVendorId(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--vc-border)', borderRadius: 6, fontSize: 14, color: 'var(--vc-text-primary)', backgroundColor: '#fff', boxSizing: 'border-box', outline: 'none' }}>
+                    <option value="">Select vendor…</option>
+                    {vendors.map(v => <option key={v.id} value={v.id}>{v.company_name} — {v.status}</option>)}
+                  </select>
+                </div>
+                <div style={{ marginBottom: 18 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--vc-text-primary)', marginBottom: 8 }}>Decision</label>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    {(['approve', 'reject'] as const).map(act => (
+                      <label key={act} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14, color: 'var(--vc-text-body)', padding: '8px 16px', border: `1px solid ${approveAction === act ? (act === 'approve' ? '#16a34a' : '#dc2626') : 'var(--vc-border)'}`, borderRadius: 6, backgroundColor: approveAction === act ? (act === 'approve' ? '#f0fdf4' : '#fef2f2') : '#fff', transition: 'all 0.15s' }}>
+                        <input type="radio" name="action" value={act} checked={approveAction === act} onChange={() => setApproveAction(act)} style={{ accentColor: act === 'approve' ? '#16a34a' : '#dc2626' }} />
+                        {act === 'approve' ? <><CheckCircle size={15} color="#16a34a" /> Approve</> : <><XCircle size={15} color="#dc2626" /> Reject</>}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginBottom: 24 }}>
+                  <label htmlFor="review_note" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--vc-text-primary)', marginBottom: 6 }}>Reviewer Note</label>
+                  <textarea id="review_note" value={reviewNote} onChange={e => setReviewNote(e.target.value)}
+                    placeholder="Add a compliance note or reason…"
+                    rows={3}
+                    style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--vc-border)', borderRadius: 6, fontSize: 14, color: 'var(--vc-text-primary)', backgroundColor: '#fff', boxSizing: 'border-box', outline: 'none', resize: 'vertical' }} />
+                </div>
+                <button type="submit" disabled={loading}
+                  style={{ width: '100%', padding: '11px 24px', backgroundColor: approveAction === 'approve' ? '#16a34a' : '#dc2626', color: '#fff', border: 'none', borderRadius: 6, fontSize: 15, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, transition: 'opacity 0.15s' }}>
+                  {loading ? 'Processing…' : approveAction === 'approve' ? 'Approve Vendor' : 'Reject Vendor'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ── NOTIFICATIONS ── */}
+        {activeTab === 'notifications' && (
+          <div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--vc-primary)', letterSpacing: '0.02em', marginBottom: 6 }}>Activity &amp; Notifications</h1>
+            <p style={{ color: 'var(--vc-text-muted)', fontSize: 14, marginBottom: 28 }}>Audit trail of all compliance events and system notifications</p>
+            {notifications.length > 0 ? (
+              <div style={{ backgroundColor: 'var(--vc-surface-card)', border: '1px solid var(--vc-border)', borderRadius: 8, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--vc-border)' }}>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 600, color: 'var(--vc-primary)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Notification History</h2>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ backgroundColor: 'var(--vc-neutral-tint)' }}>
+                        {['Type', 'Message', 'Status', 'Time'].map(h => (
+                          <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: 'var(--vc-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {notifications.map((n, i) => (
+                        <tr key={n.id} style={{ borderTop: '1px solid var(--vc-border)', backgroundColor: i % 2 === 1 ? 'var(--vc-neutral-tint)' : 'transparent' }}>
+                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--vc-primary)', fontWeight: 600, fontFamily: 'monospace', backgroundColor: 'var(--vc-primary-tint)', padding: '2px 8px', borderRadius: 4 }}>{n.type}</span>
+                          </td>
+                          <td style={{ padding: '12px 16px', color: 'var(--vc-text-body)' }}>{n.message}</td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{ fontSize: 12, color: n.status === 'sent' ? '#166534' : '#92400e', backgroundColor: n.status === 'sent' ? '#dcfce7' : '#fef3c7', padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>{n.status}</span>
+                          </td>
+                          <td style={{ padding: '12px 16px', color: 'var(--vc-text-muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{new Date(n.created_at).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div style={{ backgroundColor: 'var(--vc-surface-card)', border: '1px dashed var(--vc-border)', borderRadius: 8, padding: '48px 24px', textAlign: 'center' }}>
+                <Bell size={40} color="var(--vc-text-faint)" strokeWidth={1.4} style={{ margin: '0 auto 12px' }} />
+                <p style={{ color: 'var(--vc-text-muted)', fontSize: 14 }}>No notifications yet. Register a vendor or complete an approval to generate activity.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-
-      <main style={{maxWidth:"80rem",margin:"0 auto",padding:"1.5rem",display:"flex",flexDirection:"column",gap:"1.5rem"}}>
-
-        {/* Forms */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))",gap:"1.5rem"}}>
-          <section>
-            <p style={{fontSize:"0.625rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"var(--vc-text-muted)",marginBottom:"0.75rem"}}>Register Vendor</p>
-            <Card style={{backgroundColor:"var(--vc-surface-card)",border:"1px solid var(--vc-border)",padding:"1.25rem"}}>
-              <form onSubmit={onVendor} style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
-                <div>
-                  <Label htmlFor="vendor_email" style={{color:"var(--vc-text-body)",fontSize:"0.8rem"}}>Vendor Email</Label>
-                  <Input id="vendor_email" type="email" placeholder="vendor@company.com" value={vEmail} onChange={e=>setVEmail(e.target.value)} required className="mt-1 h-9 text-sm"/>
-                </div>
-                <div>
-                  <Label htmlFor="company_name" style={{color:"var(--vc-text-body)",fontSize:"0.8rem"}}>Company Name</Label>
-                  <Input id="company_name" placeholder="Acme Supplies" value={vName} onChange={e=>setVName(e.target.value)} required className="mt-1 h-9 text-sm"/>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0.75rem"}}>
-                  <div>
-                    <Label htmlFor="category" style={{color:"var(--vc-text-body)",fontSize:"0.8rem"}}>Category</Label>
-                    <Input id="category" placeholder="Logistics…" value={vCat} onChange={e=>setVCat(e.target.value)} required className="mt-1 h-9 text-sm"/>
-                  </div>
-                  <div>
-                    <Label htmlFor="risk_level" style={{color:"var(--vc-text-body)",fontSize:"0.8rem"}}>Risk Level</Label>
-                    <select id="risk_level" value={vRisk} onChange={e=>setVRisk(e.target.value)}
-                      style={{marginTop:"4px",width:"100%",borderRadius:"6px",border:"1px solid var(--vc-border)",padding:"0 0.75rem",height:"36px",fontSize:"0.875rem",backgroundColor:"var(--vc-surface-card)",color:"var(--vc-text-primary)"}}>
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                    </select>
-                  </div>
-                </div>
-                <Button type="submit" disabled={loading} style={{backgroundColor:"var(--vc-accent)",color:"var(--vc-on-accent)",height:"36px",fontSize:"0.875rem",fontWeight:600,width:"100%"}}>
-                  <Plus className="h-3.5 w-3.5 mr-1.5"/>{loading?"Registering…":"Register Vendor"}
-                </Button>
-                {submitMsg && <p style={{fontSize:"0.75rem",color:submitMsg.includes("added")?"var(--vc-primary)":"var(--vc-accent-text)",margin:0}}>{submitMsg}</p>}
-              </form>
-            </Card>
-          </section>
-
-          <section>
-            <p style={{fontSize:"0.625rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"var(--vc-text-muted)",marginBottom:"0.75rem"}}>Record Document</p>
-            <Card style={{backgroundColor:"var(--vc-surface-card)",border:"1px solid var(--vc-border)",padding:"1.25rem"}}>
-              <form onSubmit={onDoc} style={{display:"flex",flexDirection:"column",gap:"0.75rem"}}>
-                <div>
-                  <Label htmlFor="doc_vendor_id" style={{color:"var(--vc-text-body)",fontSize:"0.8rem"}}>Vendor ID</Label>
-                  <Input id="doc_vendor_id" placeholder="Paste vendor UUID" value={dVid} onChange={e=>setDVid(e.target.value)} required className="mt-1 h-9 text-sm font-mono"/>
-                </div>
-                <div>
-                  <Label htmlFor="doc_name" style={{color:"var(--vc-text-body)",fontSize:"0.8rem"}}>Document Name</Label>
-                  <Input id="doc_name" placeholder="insurance.pdf" value={dName} onChange={e=>setDName(e.target.value)} required className="mt-1 h-9 text-sm"/>
-                </div>
-                <div>
-                  <Label htmlFor="doc_url" style={{color:"var(--vc-text-body)",fontSize:"0.8rem"}}>Document URL</Label>
-                  <Input id="doc_url" type="url" placeholder="https://…" value={dUrl} onChange={e=>setDUrl(e.target.value)} required className="mt-1 h-9 text-sm"/>
-                </div>
-                <div>
-                  <Label htmlFor="doc_type" style={{color:"var(--vc-text-body)",fontSize:"0.8rem"}}>Type</Label>
-                  <Input id="doc_type" placeholder="insurance, contract…" value={dType} onChange={e=>setDType(e.target.value)} required className="mt-1 h-9 text-sm"/>
-                </div>
-                <Button type="submit" style={{backgroundColor:"var(--vc-primary)",color:"var(--vc-on-primary)",height:"36px",fontSize:"0.875rem",fontWeight:600,width:"100%"}}>
-                  <Upload className="h-3.5 w-3.5 mr-1.5"/>Save Document
-                </Button>
-                {docMsg && <p style={{fontSize:"0.75rem",color:docMsg.includes("saved")?"var(--vc-primary)":"var(--vc-accent-text)",margin:0}}>{docMsg}</p>}
-              </form>
-            </Card>
-          </section>
-        </div>
-
-        {/* Admin Approval Queue */}
-        <section aria-label="approval">
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"0.75rem"}}>
-            <p style={{fontSize:"0.625rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"var(--vc-text-muted)",margin:0}}>Admin Approval Queue</p>
-            {actMsg && <span style={{fontSize:"0.75rem",fontWeight:600,color:"var(--vc-primary)"}}>{actMsg}</span>}
-          </div>
-          {vendors.length===0 && (
-            <Card style={{backgroundColor:"var(--vc-surface-card)",border:"1px solid var(--vc-border)",padding:"2rem",textAlign:"center"}}>
-              <AlertTriangle className="h-5 w-5" style={{color:"var(--vc-accent)",margin:"0 auto 0.5rem"}}/>
-              <p style={{fontSize:"0.875rem",color:"var(--vc-text-faint)",margin:0}}>No vendors registered yet — use the form above.</p>
-            </Card>
-          )}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))",gap:"0.75rem"}}>
-            {vendors.map(v=><VendorCard key={v.id} v={v}/>)}
-          </div>
-        </section>
-
-        {/* Activity + Documents */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))",gap:"1.5rem"}}>
-          <section aria-label="notification">
-            <p style={{fontSize:"0.625rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"var(--vc-text-muted)",marginBottom:"0.75rem"}}>Activity &amp; Notifications</p>
-            <Card style={{backgroundColor:"var(--vc-surface-card)",border:"1px solid var(--vc-border)"}}>
-              {notifications.length===0 && (
-                <div style={{padding:"2rem",textAlign:"center",fontSize:"0.875rem",color:"var(--vc-text-faint)"}}>No activity yet.</div>
-              )}
-              <ul style={{listStyle:"none",margin:0,padding:0}}>
-                {notifications.slice(0,8).map((n,i)=>(
-                  <li key={n.id} style={{display:"flex",alignItems:"flex-start",gap:"0.75rem",padding:"0.875rem 1.25rem",borderBottom:i<Math.min(notifications.length,8)-1?"1px solid var(--vc-border)":"none"}}>
-                    <Bell className="h-3.5 w-3.5" style={{color:"var(--vc-accent)",marginTop:"2px",flexShrink:0}}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <p style={{fontSize:"0.875rem",color:"var(--vc-text-primary)",margin:0}}>{n.message}</p>
-                      <p style={{fontSize:"0.72rem",color:"var(--vc-text-faint)",margin:0}}>{n.type} &middot; {new Date(n.createdAt??n.created_at??"").toLocaleString()}</p>
-                    </div>
-                    <span style={{...ST[n.status]??ORANGE,padding:"2px 6px",borderRadius:"4px",fontSize:"0.7rem",flexShrink:0}}>{n.status}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          </section>
-
-          <section>
-            <p style={{fontSize:"0.625rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"var(--vc-text-muted)",marginBottom:"0.75rem"}}>Documents on File</p>
-            <Card style={{backgroundColor:"var(--vc-surface-card)",border:"1px solid var(--vc-border)"}}>
-              {documents.length===0 && (
-                <div style={{padding:"2rem",textAlign:"center",fontSize:"0.875rem",color:"var(--vc-text-faint)"}}>No documents yet.</div>
-              )}
-              <ul style={{listStyle:"none",margin:0,padding:0}}>
-                {documents.slice(0,8).map((d,i)=>(
-                  <li key={d.id} style={{display:"flex",alignItems:"center",gap:"0.75rem",padding:"0.75rem 1.25rem",borderBottom:i<Math.min(documents.length,8)-1?"1px solid var(--vc-border)":"none"}}>
-                    <FileText className="h-4 w-4" style={{color:"var(--vc-accent)",flexShrink:0}}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <p style={{fontSize:"0.875rem",fontWeight:500,color:"var(--vc-text-primary)",margin:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.documentName??d.document_name}</p>
-                      <p style={{fontSize:"0.72rem",color:"var(--vc-text-faint)",margin:0}}>{d.documentType??d.document_type} &middot; {(d.vendorId??d.vendor_id??"").slice(0,8)}…</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          </section>
-        </div>
-
-      </main>
-
-      <footer style={{backgroundColor:"var(--vc-primary)",borderTop:"1px solid var(--vc-primary-mid)",padding:"1.25rem 1.5rem",marginTop:"1.5rem"}}>
-        <div style={{maxWidth:"80rem",margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-            <ShieldCheck className="h-4 w-4" style={{color:"var(--vc-accent)"}}/>
-            <span style={{fontFamily:"var(--font-display)",fontSize:"0.95rem",fontWeight:600,color:"var(--vc-on-primary)"}}>VendorGuard</span>
-          </div>
-          <p style={{fontSize:"0.75rem",color:"var(--vc-header-sub)",margin:0}}>Keep your supply chain audit-ready</p>
-        </div>
-      </footer>
     </div>
   );
 }

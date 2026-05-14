@@ -1,15 +1,7 @@
-import { NextRequest } from "next/server";
-import { db } from "@/db";
-import { canaryVendor, canaryNotification } from "@/db/schema";
-import { eq } from "drizzle-orm";
-
-// NOTE: Canary endpoint — intentionally public per canary test contract.
-// In production, this endpoint should require admin session.
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const MAX_NOTE_LENGTH = 1000;
-const VALID_ACTIONS = ["approved", "rejected"] as const;
-type VendorAction = typeof VALID_ACTIONS[number];
+import { NextRequest } from 'next/server';
+import { db } from '@/db';
+import { canaryVendor, canaryNotification } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function POST(
   req: NextRequest,
@@ -17,21 +9,9 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-
-    if (!UUID_REGEX.test(id)) {
-      return Response.json({ ok: false, error: "Invalid vendor ID format" }, { status: 400 });
-    }
-
-    const body = await req.json().catch(() => ({}));
-    const review_note = body?.review_note
-      ? String(body.review_note).slice(0, MAX_NOTE_LENGTH)
-      : "";
-
-    // Support explicit action field; default to approved
-    const rawAction = body?.action ?? "approved";
-    const action: VendorAction = VALID_ACTIONS.includes(rawAction as VendorAction)
-      ? (rawAction as VendorAction)
-      : "approved";
+    const body = await req.json();
+    const { review_note, action } = body;
+    const newStatus = action === 'reject' ? 'rejected' : 'approved';
 
     const existing = await db
       .select()
@@ -39,33 +19,36 @@ export async function POST(
       .where(eq(canaryVendor.id, id))
       .limit(1);
 
-    if (!existing.length) {
-      return Response.json({ ok: false, error: "Vendor not found" }, { status: 404 });
+    if (existing.length === 0) {
+      return Response.json(
+        { ok: false, error: { code: 'NOT_FOUND', message: 'Vendor not found' } },
+        { status: 404 }
+      );
     }
 
     const [updated] = await db
       .update(canaryVendor)
       .set({
-        status: action,
-        reviewNote: review_note,
-        reviewedBy: "admin",
+        status: newStatus,
+        reviewNote: review_note ?? null,
         reviewedAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(canaryVendor.id, id))
       .returning();
 
-    // Record approval/rejection notification
+    // Record notification for approval/rejection
     await db.insert(canaryNotification).values({
       vendorId: id,
-      type: `vendor_${action}`,
-      message: `Vendor ${existing[0].companyName} has been ${action}. Note: ${review_note || "none"}`,
-      status: "sent",
+      type: `vendor_${newStatus}`,
+      message: `Vendor ${existing[0].companyName} has been ${newStatus}. Note: ${review_note ?? 'No note'}`,
+      status: 'sent',
     });
 
     return Response.json({ ok: true, vendor: updated });
-  } catch (err) {
-    console.error("[canary-vendors approve POST]", err);
-    return Response.json({ ok: false, error: "Failed to update vendor status" }, { status: 500 });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    console.error(JSON.stringify({ level: 'error', route: 'POST /api/canary-vendors/[id]/approve', error: msg }));
+    return Response.json({ ok: false, error: { code: 'DB_ERROR', message: msg } }, { status: 500 });
   }
 }

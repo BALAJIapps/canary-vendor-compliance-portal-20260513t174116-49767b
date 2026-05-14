@@ -1,32 +1,20 @@
-import type { Metadata } from "next";
-
-import { Toaster } from "@/components/providers/toaster";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "VendorGuard — Vendor Compliance Portal",
-  description: "Onboard vendors, collect compliance documents, and manage approvals in one place.",
+  title: 'VendorGuard — Compliance Portal',
+  description: 'Enterprise vendor compliance portal: onboard vendors, manage documents, approve with confidence.',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Ubuntu:wght@300;400;500;700&display=swap"
-          rel="stylesheet"
-        />
+        <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Ubuntu:wght@300;400;500;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="min-h-screen bg-background text-foreground antialiased">
-        {children}
-        <Toaster />
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
